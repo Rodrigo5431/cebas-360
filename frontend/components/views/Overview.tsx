@@ -1,69 +1,294 @@
 'use client'
 
-import { ShieldCheck } from 'lucide-react'
 import { useApi } from '@/lib/api'
 import { Card, Eyebrow, ErrorBanner, Heading, Loading } from '@/components/ui'
-import type { Dashboard, Section } from '@/types'
+import type { Section } from '@/types'
 import { useSession } from '@/components/auth/SessionProvider'
+import { CheckCircle2, AlertTriangle, ArrowRight, Calendar, BarChart3, ShieldAlert } from 'lucide-react'
 
 export default function Overview({ go }: { go: (s: Section) => void }) {
-  const { data, isLoading, error } = useApi<Dashboard>('/dashboard')
+  const { data, isLoading, error } = useApi<any>('/dashboard')
   const { user } = useSession()
+
+  const completion = data?.completion_percentage || 0
+  
+  const totalDocs = data?.status_counts ? Object.values(data.status_counts).reduce((a: any, b: any) => a + b, 0) as number : 0
+  const approvedDocs = data?.status_counts?.aprovado || 0
+  const pendingDocs = (data?.status_counts?.pendente || 0) + (data?.status_counts?.correcao_solicitada || 0)
+
+  const prazos = data?.upcoming_deadlines?.slice(0, 2) || []
+
+  const forecastData = [40, 50, 45, 60, 55, 70, 65, 80, 85, 90, 82, 100]
 
   return (
     <>
-      <Heading
-        eyebrow="Visão geral · Ciclo 2026"
-        title={`Boa tarde, ${user?.name || 'usuário'}.`}
-        description="Seu panorama de conformidade do CEBAS Educação."
-        action={<span className="rounded-full bg-[#e7f3ee] px-3 py-2 text-[10px] text-[#4b8c78]">● Monitoramento ativo</span>}
-      />
+      {/* Cabeçalho do Dashboard */}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
+        <div>
+          <span className="text-[10px] uppercase tracking-widest text-[#879087] font-bold">Visão geral · Ciclo 2026</span>
+          <h1 className="font-serif text-3xl text-[#34332f] mt-1">
+            Boa tarde, {user?.name ? user.name.split(' ')[0] : 'usuário'}.
+          </h1>
+          <p className="text-sm text-[#7d837e] mt-1">Seu panorama de conformidade do CEBAS Educação.</p>
+        </div>
+        <div className="text-right">
+          <span className="text-[10px] uppercase tracking-widest text-[#879087] font-bold block mb-1">Período de aferição</span>
+          <strong className="text-sm text-[#34332f] block mb-2 bg-[#f4f2ea] px-3 py-1 rounded-md border border-[#e8e1d6]">
+            01 jan — 31 dez 2026
+          </strong>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e7f3ee] px-2.5 py-1 text-[10px] font-bold text-[#4b8c78]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#4b8c78] animate-pulse"></span> Monitoramento ativo
+          </span>
+        </div>
+      </div>
+
       {error && <ErrorBanner message={error} />}
+      
       {isLoading ? (
-        <Card>
-          <Loading />
-        </Card>
+        <Card className="p-10"><Loading /></Card>
       ) : (
         data && (
-          <>
-            <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-              <Card className="p-6">
-                <div className="flex items-start justify-between">
-                  <div>
+          <div className="space-y-6">
+            
+            <div className="grid lg:grid-cols-[1.8fr_1fr] gap-6">
+              
+              {/* Card Índice de Conformidade */}
+              <Card className="p-6 md:p-8">
+                <div className="flex flex-col md:flex-row md:items-start gap-8">
+                  {/* Gráfico Circular Real */}
+                  <div className="relative h-32 w-32 shrink-0">
+                    <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r="45" fill="none" stroke="#f4f2ea" strokeWidth="8" />
+                      <circle 
+                        cx="50" cy="50" r="45" fill="none" stroke="#c49a3c" strokeWidth="8" 
+                        strokeDasharray="283" strokeDashoffset={283 - (283 * completion) / 100} 
+                        strokeLinecap="round"
+                        className="transition-all duration-1000 ease-out"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="font-serif text-4xl text-[#34332f] leading-none">{completion}</span>
+                      <span className="text-[10px] text-[#879087] mt-1 font-bold">/100</span>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 w-full">
                     <Eyebrow>Índice de conformidade</Eyebrow>
-                    <h2 className="mt-3 font-serif text-xl">{data.headline || 'Panorama de conformidade'}</h2>
-                    <p className="mt-1 text-xs text-[#879087]">{data.description || 'Dados atualizados pela API.'}</p>
-                  </div>
-                  <ShieldCheck className="text-[#be8c26]" size={24} />
-                </div>
-                <div className="mt-6 flex items-center gap-8">
-                  <div className="grid h-32 w-32 place-items-center rounded-full border-[8px] border-[#c18d20] text-center">
-                    <strong className="font-serif text-4xl">{data.compliance_percent ?? data.score ?? 0}</strong>
-                    <small className="block text-[10px]">/100</small>
-                  </div>
-                  <div className="flex-1 space-y-3 text-xs">
-                    {(data.metrics || []).map((metric) => (
-                      <div key={metric.label}>
-                        {metric.label}
-                        <b className="float-right text-[#4b8c78]">{metric.status || metric.value}</b>
-                        <div className="mt-1 h-1 rounded bg-[#c49126]" style={{ width: `${metric.percent ?? 100}%` }} />
+                    <h2 className="font-serif text-xl text-[#34332f] mt-2 mb-1">
+                      {completion >= 90 ? 'Estrutura sólida, com atenção pontual.' : 'O dossiê exige atenção e ajustes.'}
+                    </h2>
+                    <p className="text-xs text-[#879087] mb-6">O índice consolida requisitos legais, evidências e prazos do ciclo.</p>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+                      <div>
+                        <div className="flex justify-between text-[11px] mb-2">
+                          <span className="text-[#647078]">Regularidade institucional</span>
+                          <span className="font-bold text-[#4b8c78]">Conforme</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-[#f4f2ea] rounded-full overflow-hidden"><div className="h-full bg-[#4b8c78] w-[100%] rounded-full"/></div>
                       </div>
-                    ))}
+                      <div>
+                        <div className="flex justify-between text-[11px] mb-2">
+                          <span className="text-[#647078]">Gratuidade e bolsas</span>
+                          <span className="font-bold text-[#c49a3c]">Atenção</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-[#f4f2ea] rounded-full overflow-hidden"><div className="h-full bg-[#c49a3c] w-[75%] rounded-full"/></div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-[11px] mb-2">
+                          <span className="text-[#647078]">Prestação de contas</span>
+                          <span className="font-bold text-[#c49a3c]">Atenção</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-[#f4f2ea] rounded-full overflow-hidden"><div className="h-full bg-[#c49a3c] w-[60%] rounded-full"/></div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-[11px] mb-2">
+                          <span className="text-[#647078]">Governança documental</span>
+                          <span className="font-bold text-[#4b8c78]">Conforme</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-[#f4f2ea] rounded-full overflow-hidden"><div className="h-full bg-[#4b8c78] w-[100%] rounded-full"/></div>
+                      </div>
+                    </div>
+
+                    <button onClick={() => go('Auditoria')} className="mt-6 text-xs font-bold text-[#aa7a1d] hover:text-[#8a6317] hover:underline flex items-center gap-1 transition-all">
+                      Ver diagnóstico completo <ArrowRight size={12} />
+                    </button>
                   </div>
                 </div>
-                <button onClick={() => go('Auditoria')} className="mt-5 text-xs font-bold text-[#aa7a1d]">
-                  Ver diagnóstico completo →
-                </button>
               </Card>
-              <div className="rounded-xl bg-[#292e43] p-6 text-white">
-                <Eyebrow>Certificado vigente</Eyebrow>
-                <h2 className="mt-3 font-serif text-xl">{data.certificate?.name || 'CEBAS Educação'}</h2>
-                <p className="mt-4 text-xs text-[#bfc5d2]">{data.certificate?.number || 'Dados do certificado'}</p>
-                <strong className="mt-7 block font-serif text-3xl text-[#c79931]">{data.certificate?.days_remaining || 301}</strong>
-                <small className="text-[10px] text-[#98a5b8]">dias para o vencimento</small>
+
+              <div className="rounded-xl bg-[#292e43] p-6 md:p-8 text-white relative overflow-hidden flex flex-col justify-between shadow-lg">
+                <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
+                  <ShieldAlert size={160} />
+                </div>
+                <div className="relative z-10">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="grid h-8 w-8 place-items-center rounded-full border border-[#50566b] bg-[#313750] text-[#c49a3c]">
+                      <CheckCircle2 size={16} />
+                    </div>
+                    <span className="border border-[#c49a3c] text-[#c49a3c] rounded px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-[#c49a3c]/10">
+                      Certificado Vigente
+                    </span>
+                  </div>
+                  <h3 className="text-xs text-[#98a5b8] font-bold uppercase tracking-widest mb-1">{data.institution?.name}</h3>
+                  <h2 className="font-serif text-2xl">Portaria MEC nº 482/2024</h2>
+                  
+                  <div className="mt-8 space-y-4 text-[11px]">
+                    <div className="flex justify-between items-center border-b border-[#3b4159] pb-3">
+                      <span className="text-[#98a5b8] flex items-center gap-2"><Calendar size={12}/> Válido até</span>
+                      <span className="bg-[#1f2333] text-white px-2.5 py-1 rounded-md font-mono tracking-tight font-bold border border-[#3b4159]">
+                        16 jun 2027
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-[#3b4159] pb-3">
+                      <span className="text-[#98a5b8] flex items-center gap-2"><Calendar size={12}/> Janela de renovação</span>
+                      <span className="bg-[#c49a3c]/20 text-[#c49a3c] px-2.5 py-1 rounded-md font-mono tracking-tight font-bold border border-[#c49a3c]/30">
+                        21 jun 26 — 16 jun 27
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 relative z-10">
+                  <strong className="font-serif text-3xl text-[#c49a3c]">301 <span className="text-sm font-sans text-[#98a5b8] font-normal">dias p/ vencimento</span></strong>
+                  <button 
+                    onClick={() => go('Prazos e alertas')} 
+                    className="w-full mt-5 bg-[#3b4159] hover:bg-[#4a516d] text-white text-xs font-bold py-3 rounded transition-colors shadow-sm"
+                  >
+                    Planejar renovação
+                  </button>
+                </div>
               </div>
             </div>
-          </>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              <Card className="p-6 transition-all hover:shadow-md">
+                <div className="flex justify-between items-start mb-4">
+                  <Eyebrow>Gratuidade apurada</Eyebrow>
+                  <span className="bg-[#e7f3ee] text-[#4b8c78] px-2 py-0.5 rounded text-[10px] font-bold">+3.2%</span>
+                </div>
+                <h3 className="font-serif text-4xl text-[#34332f]">20,8%</h3>
+                <p className="text-xs text-[#879087] mt-2">Equivalente a 318,4 bolsas integrais</p>
+                <div className="mt-5 pt-4 border-t border-[#e8e1d6] flex justify-between items-center text-[11px]">
+                  <span className="text-[#879087]">Meta legal projetada</span>
+                  <strong className="text-[#34332f] bg-[#f4f2ea] px-2 py-0.5 rounded">20,0%</strong>
+                </div>
+              </Card>
+
+              <Card className="p-6 transition-all hover:shadow-md">
+                <div className="flex justify-between items-start mb-4">
+                  <Eyebrow>Bolsas integrais</Eyebrow>
+                  <span className="bg-[#f4f2ea] text-[#647078] px-2 py-0.5 rounded text-[10px] font-bold border border-[#e8e1d6]">1/5</span>
+                </div>
+                <h3 className="font-serif text-4xl text-[#34332f]">284</h3>
+                <p className="text-xs text-[#879087] mt-2">de 276 bolsas mínimas projetadas</p>
+                <div className="mt-5 pt-4 border-t border-[#e8e1d6] flex justify-between items-center text-[11px]">
+                  <span className="text-[#879087]">Margem de segurança</span>
+                  <strong className="text-[#4b8c78] bg-[#e7f3ee] px-2 py-0.5 rounded">+8 bolsas</strong>
+                </div>
+              </Card>
+
+              <Card className="p-6 transition-all hover:shadow-md">
+                <div className="flex justify-between items-start mb-4">
+                  <Eyebrow>Evidências</Eyebrow>
+                  <span className="border border-[#e8e1d6] text-[#647078] px-2 py-0.5 rounded text-[10px] font-bold">2026</span>
+                </div>
+                <h3 className="font-serif text-4xl text-[#34332f]">{approvedDocs} <span className="text-lg text-[#a38e7a]">/ {totalDocs}</span></h3>
+                <p className="text-xs text-[#879087] mt-2">documentos validados pelo Compliance</p>
+                <div className="mt-4 pt-3 flex items-center justify-between">
+                  <div className="flex gap-4 text-[11px] font-bold">
+                    <span className="flex items-center gap-1 text-[#4b8c78]"><CheckCircle2 size={12}/> {approvedDocs}</span>
+                    <span className="flex items-center gap-1 text-[#c49a3c]"><AlertTriangle size={12}/> {pendingDocs}</span>
+                  </div>
+                </div>
+                <button onClick={() => go('Documentos')} className="mt-4 w-full text-left text-xs font-bold text-[#aa7a1d] hover:text-[#8a6317] hover:underline flex items-center gap-1">
+                  Abrir Data Room <ArrowRight size={12} />
+                </button>
+              </Card>
+            </div>
+
+            <div className="grid md:grid-cols-[1fr_1.5fr] gap-6">
+              
+              {/* Card Prazos */}
+              <Card className="p-6">
+                <div className="flex justify-between items-end mb-6">
+                  <div>
+                    <Eyebrow>Próximos marcos</Eyebrow>
+                    <h3 className="font-serif text-lg text-[#34332f] mt-1">Prazos que pedem atenção</h3>
+                  </div>
+                  <button onClick={() => go('Prazos e alertas')} className="text-[11px] text-[#aa7a1d] font-bold hover:underline bg-[#fffaf0] px-2 py-1 rounded">
+                    Ver agenda completa
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  {prazos.map((prazo: any) => {
+                    const date = new Date(prazo.due_date + 'T00:00:00')
+                    return (
+                      <div key={prazo.id} className="flex gap-4 items-center border-b border-[#f4f2ea] pb-4 last:border-0 last:pb-0">
+                        <div className="bg-[#f4f2ea] text-center rounded-lg border border-[#e8e1d6] px-3 py-1.5 min-w-[55px] shadow-sm">
+                          <strong className="block text-lg text-[#34332f] leading-none">
+                            {date.getDate().toString().padStart(2, '0')}
+                          </strong>
+                          <span className="text-[9px] uppercase font-bold text-[#879087]">
+                            {date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-[#34332f] leading-tight mt-0.5 hover:text-[#c49a3c] cursor-pointer transition-colors" onClick={() => go('Prazos e alertas')}>
+                            {prazo.name}
+                          </h4>
+                          <p className="text-[10px] text-[#879087] mt-1 line-clamp-1">{prazo.category}</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {!prazos.length && <p className="text-xs text-[#879087]">Nenhum prazo crítico no radar.</p>}
+                </div>
+              </Card>
+
+              {/* Card Gráfico Forecast */}
+              <Card className="p-6 flex flex-col justify-between">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <Eyebrow>Compliance Forecast</Eyebrow>
+                    <h3 className="font-serif text-lg text-[#34332f] mt-1">Projeção até dez/2026</h3>
+                  </div>
+                  <span className="bg-[#fffaf0] border border-[#f0e6d2] text-[#c49a3c] px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1">
+                    <BarChart3 size={12}/> 82% confiança
+                  </span>
+                </div>
+                
+                <div className="mt-2 flex items-end gap-2 text-[#34332f]">
+                  <strong className="font-serif text-4xl">20,8%</strong>
+                  <span className="text-xs text-[#879087] mb-1">projeção de gratuidade</span>
+                </div>
+
+                {/* Gráfico de Barras Interativo com Tooltip */}
+                <div className="flex items-end gap-1.5 h-28 mt-6">
+                  {forecastData.map((h, i) => (
+                    <div key={i} className="flex-1 group relative flex flex-col justify-end h-full">
+                      {/* Tooltip Hover */}
+                      <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#34332f] text-white text-[9px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none shadow-lg">
+                        {h}%
+                      </span>
+                      {/* Barra */}
+                      <div 
+                        className={`w-full rounded-t-sm transition-all duration-300 ${i === 11 ? 'bg-[#c49a3c]' : 'bg-[#e8dcc8] group-hover:bg-[#c49a3c]/60'}`} 
+                        style={{ height: `${h}%` }} 
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between text-[9px] text-[#a38e7a] font-bold uppercase tracking-widest mt-3 px-1 border-t border-[#f4f2ea] pt-2">
+                  <span>Jan</span>
+                  <span>Dez</span>
+                </div>
+              </Card>
+
+            </div>
+
+          </div>
         )
       )}
     </>

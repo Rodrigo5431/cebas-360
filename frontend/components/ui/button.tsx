@@ -40,16 +40,25 @@ const buttonVariants = cva(
   },
 )
 
+type ButtonProps = ButtonPrimitive.Props & VariantProps<typeof buttonVariants> & {
+  outline?: boolean
+  className?: string
+}
+
 function Button({
   className,
-  variant = 'default',
+  variant,
+  outline,
   size = 'default',
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonProps) {
+  
+  const computedVariant = outline ? 'outline' : (variant || 'default')
+
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(buttonVariants({ variant: computedVariant, size, className }))}
       {...props}
     />
   )
