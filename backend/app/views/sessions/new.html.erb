@@ -1,0 +1,32 @@
+<div class="min-h-[80vh] flex flex-col justify-center items-center px-4">
+  <div class="w-full max-w-md bg-white border border-slate-200 rounded-xl shadow-sm p-8">
+    <div class="mb-6 text-center">
+      <h1 class="text-2xl font-bold text-slate-800">Acesso à Plataforma</h1>
+      <p class="text-sm text-slate-500 mt-1">Gestão e Conformidade Documental</p>
+    </div>
+
+    <form action="/session" method="POST" class="space-y-4">
+      
+      <div>
+        <label for="email" class="block text-sm font-medium text-slate-700 mb-1">E-mail Institucional</label>
+        <input type="email" name="email" id="email" value="advogado@duopen.com.br" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <div>
+        <label for="password" class="block text-sm font-medium text-slate-700 mb-1">Senha</label>
+        <input type="password" name="password" id="password" value="password123" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <button type="submit" class="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-medium transition cursor-pointer">
+        Entrar
+      </button>
+    </form>
+
+    <div class="mt-6 p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600">
+      <p class="font-semibold text-slate-700 mb-1">Credenciais de Teste:</p>
+      <p>Advogado: <span class="font-mono">advogado@duopen.com.br</span></p>
+      <p>Cliente: <span class="font-mono">contato@instituto.org.br</span></p>
+      <p>Senha padrão: <span class="font-mono">password123</span></p>
+    </div>
+  </div>
+</div>

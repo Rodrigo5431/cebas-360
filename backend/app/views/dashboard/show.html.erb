@@ -1,0 +1,96 @@
+<div class="space-y-8">
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900 tracking-tight"><%= @institution.name %></h1>
+      <p class="text-sm text-slate-500">Acompanhamento e Conformidade Regulatória CEBAS 2026</p>
+    </div>
+    <!-- Trocado link_to por tag <a> nativa -->
+    <a href="/institutions/<%= @institution.id %>/checklist" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm shadow-sm transition">
+      Acessar Checklist de Documentos &rarr;
+    </a>
+  </div>
+
+  <!-- Barra de Progresso Geral -->
+  <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+    <div class="flex items-center justify-between mb-3">
+      <div>
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Conclusão do Processo</span>
+        <h2 class="text-3xl font-extrabold text-slate-900 mt-1"><%= @completion_percentage %>%</h2>
+      </div>
+      <span class="text-xs font-medium px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-100">
+        Ciclo 2026
+      </span>
+    </div>
+    <div class="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden">
+      <div class="bg-blue-600 h-3.5 rounded-full transition-all duration-500" style="width: <%= @completion_percentage %>%"></div>
+    </div>
+  </div>
+
+  <!-- Métricas Rápidas por Status -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+      <p class="text-xs font-medium text-slate-500">Aprovados</p>
+      <p class="text-2xl font-bold text-emerald-600 mt-1"><%= @status_counts["aprovado"] || 0 %></p>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+      <p class="text-xs font-medium text-slate-500">Em Revisão</p>
+      <p class="text-2xl font-bold text-amber-600 mt-1"><%= @status_counts["em_revisao"] || 0 %></p>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+      <p class="text-xs font-medium text-slate-500">Correção Solicitada</p>
+      <p class="text-2xl font-bold text-rose-600 mt-1"><%= @status_counts["correcao_solicitada"] || 0 %></p>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+      <p class="text-xs font-medium text-slate-500">Pendentes</p>
+      <p class="text-2xl font-bold text-slate-600 mt-1"><%= @status_counts["pendente"] || 0 %></p>
+    </div>
+  </div>
+
+  <!-- Destaque: Documentos que Requerem Atenção -->
+  <% if @items_requiring_attention.any? %>
+    <div class="bg-rose-50 border border-rose-200 rounded-xl p-6">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="flex h-2.5 w-2.5 rounded-full bg-rose-600"></span>
+        <h3 class="text-base font-semibold text-rose-900">Itens com Correção Solicitada</h3>
+      </div>
+      <div class="space-y-3">
+        <% @items_requiring_attention.each do |item| %>
+          <div class="bg-white border border-rose-200 rounded-lg p-4 shadow-xs">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span class="font-medium text-slate-900 text-sm"><%= item.name %></span>
+              <span class="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded"><%= item.category.name %></span>
+            </div>
+            <% if item.current_version&.correction_reason.present? %>
+              <div class="mt-2 text-xs text-rose-700 bg-rose-50 border border-rose-100 rounded p-2.5">
+                <span class="font-semibold">Motivo da recusa:</span> <%= item.current_version.correction_reason %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Próximos Vencimentos -->
+  <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+    <h3 class="text-base font-semibold text-slate-900 mb-4">Prazos Próximos (15 dias)</h3>
+    <div class="divide-y divide-slate-100">
+      <% @upcoming_deadlines.each do |item| %>
+        <div class="py-3 flex items-center justify-between text-sm">
+          <div>
+            <p class="font-medium text-slate-800"><%= item.name %></p>
+            <p class="text-xs text-slate-500"><%= item.category.name %></p>
+          </div>
+          <div class="text-right">
+            <span class="text-xs font-mono font-medium text-slate-600">
+              <%= item.due_date&.strftime("%d/%m/%Y") %>
+            </span>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

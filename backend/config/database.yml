@@ -1,0 +1,40 @@
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  # A linha abaixo é a mágica para o Supabase: 
+  # Se existir DATABASE_URL no .env, o Rails conecta nele e ignora o host local.
+  url: <%= ENV['DATABASE_URL'] %>
+  # Fallback: Credenciais locais caso o .env não exista
+  username: postgres
+  password: 12345
+  host: 127.0.0.1
+  port: 5432
+  sslmode: disable
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+
+development:
+  <<: *default
+  database: plataforma_documental_development
+
+test:
+  <<: *default
+  database: plataforma_documental_test
+
+production:
+  primary: &primary_production
+    <<: *default
+    database: plataforma_documental_production
+    username: plataforma_documental
+    password: <%= ENV["DATABASE_PASSWORD"] || '123456' %>
+  cache:
+    <<: *primary_production
+    database: plataforma_documental_production_cache
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *primary_production
+    database: plataforma_documental_production_queue
+    migrations_paths: db/queue_migrate
+  cable:
+    <<: *primary_production
+    database: plataforma_documental_production_cable
+    migrations_paths: db/cable_migrate
