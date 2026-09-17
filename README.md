@@ -74,7 +74,7 @@ npm run dev
 ## 📐 Decisões de Arquitetura
 
 1. **Uso de Banco de Dados Relacional (PostgreSQL/Supabase):**
-   Embora o desafio sugerisse a integração com o Google Drive como desejável, priorizei a estabilidade da plataforma estabelecendo o PostgreSQL como a fonte da verdade. Isso garante confiabilidade no controle de status, histórico de versões (versionamento no banco) e trilhas de auditoria, evitando os gargalos clássicos de depender da API do Drive como "banco de dados primário".
+ Priorizei a estabilidade da plataforma estabelecendo o PostgreSQL como a banco de dados. Isso garante confiabilidade no controle de status, histórico de versões (versionamento no banco) e trilhas de auditoria.
 
 2. **Backend For Frontend (BFF) e Segurança:**
    No frontend, utilizei uma rota de Proxy (interceptador) no Next.js. O React não fala diretamente com o Rails. Ele fala com o proxy, que anexa tokens JWT guardados em cookies `HttpOnly`. Essa escolha blinda a aplicação contra falhas de CORS e protege o JWT de ataques XSS.
