@@ -84,14 +84,6 @@ npm run dev
 
 ---
 
-## 🚫 O que foi deixado de fora e por quê
-
-* **Separação de Perfis de Acesso (RBAC):** Conforme exigido no escopo obrigatório do desafio, a plataforma não possui distinção de visualização entre "Instituição" e "Advogado". Existe um login simples apenas para coletar o e-mail/nome do operador e alimentar a trilha de auditoria.
-* **Integração profunda com Google Drive API:** Diante do prazo, optei por focar na completude das funcionalidades obrigatórias e na estrutura sólida de um storage via Rails (Active Storage ou Cloud próprio). Deixei a complexidade de tokens OAuth do Google para uma etapa posterior, preferindo um upload robusto que não quebre caso a API do Drive estivesse indisponível.
-* **OCR e Leitura Autônoma de PDFs:** Funcionalidade fora do escopo inicial da MVP.
-
----
-
 ## 🤖 Uso de IA no desenvolvimento
 
 Ferramentas de IA (como ChatGPT e GitHub Copilot) foram utilizadas como assistentes de codificação de forma estratégica:
