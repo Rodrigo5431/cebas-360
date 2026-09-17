@@ -5,11 +5,20 @@ class BolsistasController < ApplicationController
     page = (params[:page] || 1).to_i
     per_page = 10
     
-    offset = (page - 1) * per_page
-    total_items = Bolsista.count
-    total_pages = (total_items.to_f / per_page).ceil
+    # Inicia a query básica
+    query = Bolsista.all
 
-    bolsistas = Bolsista.order(name: :asc).limit(per_page).offset(offset)
+    # Filtro de pesquisa poderoso com ILIKE (PostgreSQL) para ignorar maiúsculas/minúsculas
+    if params[:search].present?
+      termo = "%#{params[:search]}%"
+      query = query.where("name ILIKE :q OR cpf ILIKE :q OR course ILIKE :q OR status ILIKE :q", q: termo)
+    end
+
+    total_items = query.count
+    total_pages = (total_items.to_f / per_page).ceil
+    offset = (page - 1) * per_page
+
+    bolsistas = query.order(name: :asc).limit(per_page).offset(offset)
 
     payload = {
       data: bolsistas.map do |b|

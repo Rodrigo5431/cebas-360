@@ -1,7 +1,8 @@
 class DashboardController < ApplicationController
   def show
     @institution = Institution.first
-    @document_items = @institution.document_items.includes(:document_versions)
+    # Incluímos :category na busca para evitar problemas de performance (N+1 queries)
+    @document_items = @institution.document_items.includes(:category, :document_versions)
     
     total_docs = @document_items.count
     approved_docs = @document_items.where(status: 'aprovado').count
@@ -10,11 +11,12 @@ class DashboardController < ApplicationController
     status_counts = @document_items.group(:status).count
 
     items_attention = @document_items.where(status: 'correcao_solicitada').map do |item|
-      last_version = item.document_versions.order(version_number: :desc).first
+      # Busca a versão mais recente diretamente na memória
+      last_version = item.document_versions.max_by(&:version_number)
       { 
         id: item.id, 
         name: item.name, 
-        category: item.category_name, 
+        category: item.category&.name, # Acessando a tabela relacional
         reason: last_version&.correction_reason 
       } 
     end
@@ -25,7 +27,7 @@ class DashboardController < ApplicationController
       { 
         id: item.id, 
         name: item.name, 
-        category: item.category_name, 
+        category: item.category&.name, # Acessando a tabela relacional
         due_date: item.due_date 
       }
     end

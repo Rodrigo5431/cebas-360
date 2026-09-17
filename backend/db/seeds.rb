@@ -3,7 +3,7 @@ AuditLog.delete_all
 DocumentVersion.delete_all
 DocumentItem.delete_all
 Category.delete_all
-Bolsista.delete_all rescue nil # Rescue caso a tabela ainda tenha dados amarrados
+Bolsista.delete_all rescue nil
 Institution.delete_all
 User.delete_all
 
@@ -11,6 +11,7 @@ puts "==> 👥 Criando 12 Usuários..."
 users = []
 users << User.create!(name: "Dr. Roberto Augusto", email: "advogado@duopen.com.br", password: "password123", password_confirmation: "password123")
 users << User.create!(name: "Coordenação Educacional", email: "contato@instituto.org.br", password: "password123", password_confirmation: "password123")
+users << User.create!(name: "Alberto", email: "admin@covac.com", password: "senha123", password_confirmation: "senha123")
 
 10.times do |i|
   users << User.create!(
@@ -68,7 +69,7 @@ tipos_bolsa = ["Integral", "Parcial 50%", "Parcial 25%"]
     course: cursos.sample,
     scholarship_type: tipos_bolsa.sample,
     income: (rand(600..4500) + rand.round(2)),
-    signed_term: [true, true, false].sample, # Mais chances de ser true
+    signed_term: [true, true, false].sample, 
     status: status_bolsa.sample
   )
 end
@@ -98,7 +99,6 @@ itens_cebas.each_with_index do |attrs, idx|
     position: idx + 1
   )
 
-  # Adicionando Versões de forma segura contra variações na estrutura da tabela
   if item.status.to_s != "pendente"
     versao = begin
       item.document_versions.create!(
