@@ -20,48 +20,53 @@ O projeto foi estruturado em um **Monorepo**, contendo o back-end em Ruby on Rai
 Certifique-se de ter o Ruby, Node.js e PostgreSQL instalados na sua máquina.
 
 ### 1. Clonando o repositório
-\`\`\`bash
-git clone https://github.com/SEU-USUARIO/cebas-360.git
+```bash
+
+git clone https://github.com/Rodrigo5431/cebas-360.git
+```
+```
 cd cebas-360
-\`\`\`
+```
 
 ### 2. Configurando o Back-end (Rails)
 Abra uma nova aba do terminal e navegue até a pasta do backend:
-\`\`\`bash
+```bash
 cd backend
-\`\`\`
+```
 Instale as dependências:
-\`\`\`bash
+```bash
 bundle install
-\`\`\`
+```
 Crie um arquivo `.env` na raiz da pasta `backend` com a URL do seu banco de dados:
-\`\`\`env
+```env
 DATABASE_URL="postgresql://USUARIO:SENHA@SEU-HOST.supabase.co:5432/postgres"
-\`\`\`
+```
 Prepare o banco de dados e inicie o servidor:
-\`\`\`bash
+```bash
 rails db:migrate
+```
+```
 rails server
-\`\`\`
+```
 > O backend rodará em `http://localhost:3000`
 
 ### 3. Configurando o Front-end (Next.js)
 Abra outra aba no terminal e navegue até a pasta do frontend:
-\`\`\`bash
+```bash
 cd frontend
-\`\`\`
+```
 Instale as dependências:
-\`\`\`bash
+```bash
 npm install
-\`\`\`
-Crie um arquivo `.env.local` na raiz da pasta `frontend` apontando para o Rails:
-\`\`\`env
+```
+Crie um arquivo `.env` na raiz da pasta `frontend` apontando para o Rails:
+```env
 API_URL="http://127.0.0.1:3000"
-\`\`\`
+```
 Inicie o servidor de desenvolvimento:
-\`\`\`bash
+```bash
 npm run dev
-\`\`\`
+```
 > O frontend rodará em `http://localhost:3001` (Acesse por aqui para usar a aplicação).
 
 ---
