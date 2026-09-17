@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_14_223632) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_17_153203) do
   create_schema "extensions"
 
   # These are extensions that must be enabled in order to support this database
@@ -61,6 +61,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_14_223632) do
     t.index ["document_item_id"], name: "index_audit_logs_on_document_item_id"
     t.index ["document_version_id"], name: "index_audit_logs_on_document_version_id"
     t.index ["user_id"], name: "index_audit_logs_on_user_id"
+  end
+
+  create_table "public.bolsistas", force: :cascade do |t|
+    t.string "course"
+    t.string "cpf"
+    t.datetime "created_at", null: false
+    t.decimal "income"
+    t.string "name"
+    t.string "scholarship_type"
+    t.boolean "signed_term"
+    t.string "status"
+    t.datetime "updated_at", null: false
   end
 
   create_table "public.categories", force: :cascade do |t|

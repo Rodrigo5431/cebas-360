@@ -3,46 +3,31 @@ class BolsistasController < ApplicationController
 
   def index
     page = (params[:page] || 1).to_i
+    per_page = 10
+    
+    offset = (page - 1) * per_page
+    total_items = Bolsista.count
+    total_pages = (total_items.to_f / per_page).ceil
 
-    # Retornamos os dados fictícios DIRETAMENTE no formato exato que o React espera.
-    # Sem referenciar "Bolsista.all", evitando qualquer crash de banco vazio.
+    bolsistas = Bolsista.order(name: :asc).limit(per_page).offset(offset)
+
     payload = {
-      data: [
+      data: bolsistas.map do |b|
         { 
-          id: 1, 
-          name: "Maria Silva", 
-          cpf: "111.222.333-44", 
-          course: "Direito", 
-          scholarship_type: "Integral", 
-          income: 1200.0, 
-          signed_term: true, 
-          status: "aprovado" 
-        },
-        { 
-          id: 2, 
-          name: "João Souza", 
-          cpf: "555.666.777-88", 
-          course: "Engenharia", 
-          scholarship_type: "Parcial", 
-          income: 2500.0, 
-          signed_term: false, 
-          status: "pendente" 
-        },
-        { 
-          id: 3, 
-          name: "Ana Costa", 
-          cpf: "999.888.777-66", 
-          course: "Medicina", 
-          scholarship_type: "Integral", 
-          income: 900.0, 
-          signed_term: true, 
-          status: "em_revisao" 
+          id: b.id, 
+          name: b.name, 
+          cpf: b.cpf, 
+          course: b.course, 
+          scholarship_type: b.scholarship_type, 
+          income: b.income, 
+          signed_term: b.signed_term, 
+          status: b.status 
         }
-      ],
+      end,
       meta: { 
         current_page: page, 
-        total_pages: 1, 
-        total_items: 3 
+        total_pages: total_pages == 0 ? 1 : total_pages, 
+        total_items: total_items 
       }
     }
 
@@ -50,6 +35,13 @@ class BolsistasController < ApplicationController
   end
 
   def create
-    render json: { message: "Bolsista cadastrado com sucesso", id: 999 }, status: :created
+    bolsista = Bolsista.create!(bolsista_params)
+    render json: { message: "Bolsista cadastrado", id: bolsista.id }, status: :created
+  end
+
+  private
+
+  def bolsista_params
+    params.require(:bolsista).permit(:name, :cpf, :course, :scholarship_type, :income, :signed_term, :status)
   end
 end

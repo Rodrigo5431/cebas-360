@@ -2,7 +2,6 @@ require 'base64'
 require 'json'
 
 class ApplicationController < ActionController::Base
-  # Sobrescrevemos a verificação do Rails para evitar bloqueios de CORS/CSRF com o React
   def verify_authenticity_token
     true
   end
@@ -17,13 +16,10 @@ class ApplicationController < ActionController::Base
     
     uid = nil
 
-    # 1. Se recebemos o Mock JWT do Next.js (composto por 3 partes separadas por ponto)
     if token.present?
       parts = token.split('.')
-      
       if parts.length == 3
         begin
-          # Desempacota o JWT para pegar o ID verdadeiro do usuário
           payload_json = Base64.decode64(parts[1])
           payload = JSON.parse(payload_json)
           uid = payload["id"] || payload["sub"]
@@ -35,21 +31,19 @@ class ApplicationController < ActionController::Base
       end
     end
     
-    # 2. Fallback para o cookie nativo do Rails
     uid ||= cookies[:duopen_uid]
 
     if uid.present?
-      @current_user ||= User.all.to_a.find { |u| u.id.to_s == uid.to_s }
+      @current_user ||= User.find_by(id: uid)
     end
   end
 
   def logged_in?
-    current_user != nil
+    current_user.present?
   end
 
   def require_login
-    if !logged_in?
-      # Retornando JSON puramente sem usar o `render json:`
+    unless logged_in?
       self.status = 401
       self.content_type = "application/json"
       self.response_body = { error: "Não autorizado. Faça login." }.to_json

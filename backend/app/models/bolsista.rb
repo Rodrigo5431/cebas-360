@@ -1,0 +1,2 @@
+class Bolsista < ApplicationRecord
+end
