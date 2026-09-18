@@ -20,48 +20,53 @@ O projeto foi estruturado em um **Monorepo**, contendo o back-end em Ruby on Rai
 Certifique-se de ter o Ruby, Node.js e PostgreSQL instalados na sua máquina.
 
 ### 1. Clonando o repositório
-\`\`\`bash
-git clone https://github.com/SEU-USUARIO/cebas-360.git
+```bash
+
+git clone https://github.com/Rodrigo5431/cebas-360.git
+```
+```
 cd cebas-360
-\`\`\`
+```
 
 ### 2. Configurando o Back-end (Rails)
 Abra uma nova aba do terminal e navegue até a pasta do backend:
-\`\`\`bash
+```bash
 cd backend
-\`\`\`
+```
 Instale as dependências:
-\`\`\`bash
+```bash
 bundle install
-\`\`\`
+```
 Crie um arquivo `.env` na raiz da pasta `backend` com a URL do seu banco de dados:
-\`\`\`env
+```env
 DATABASE_URL="postgresql://USUARIO:SENHA@SEU-HOST.supabase.co:5432/postgres"
-\`\`\`
+```
 Prepare o banco de dados e inicie o servidor:
-\`\`\`bash
+```bash
 rails db:migrate
+```
+```
 rails server
-\`\`\`
+```
 > O backend rodará em `http://localhost:3000`
 
 ### 3. Configurando o Front-end (Next.js)
 Abra outra aba no terminal e navegue até a pasta do frontend:
-\`\`\`bash
+```bash
 cd frontend
-\`\`\`
+```
 Instale as dependências:
-\`\`\`bash
+```bash
 npm install
-\`\`\`
-Crie um arquivo `.env.local` na raiz da pasta `frontend` apontando para o Rails:
-\`\`\`env
+```
+Crie um arquivo `.env` na raiz da pasta `frontend` apontando para o Rails:
+```env
 API_URL="http://127.0.0.1:3000"
-\`\`\`
+```
 Inicie o servidor de desenvolvimento:
-\`\`\`bash
+```bash
 npm run dev
-\`\`\`
+```
 > O frontend rodará em `http://localhost:3001` (Acesse por aqui para usar a aplicação).
 
 ---
@@ -69,21 +74,13 @@ npm run dev
 ## 📐 Decisões de Arquitetura
 
 1. **Uso de Banco de Dados Relacional (PostgreSQL/Supabase):**
-   Embora o desafio sugerisse a integração com o Google Drive como desejável, priorizei a estabilidade da plataforma estabelecendo o PostgreSQL como a fonte da verdade. Isso garante confiabilidade no controle de status, histórico de versões (versionamento no banco) e trilhas de auditoria, evitando os gargalos clássicos de depender da API do Drive como "banco de dados primário".
+ Priorizei a estabilidade da plataforma estabelecendo o PostgreSQL como a banco de dados. Isso garante confiabilidade no controle de status, histórico de versões (versionamento no banco) e trilhas de auditoria.
 
 2. **Backend For Frontend (BFF) e Segurança:**
    No frontend, utilizei uma rota de Proxy (interceptador) no Next.js. O React não fala diretamente com o Rails. Ele fala com o proxy, que anexa tokens JWT guardados em cookies `HttpOnly`. Essa escolha blinda a aplicação contra falhas de CORS e protege o JWT de ataques XSS.
 
 3. **Renderização Estática para Knowledge Base:**
    Páginas informativas, como a "Base Normativa", foram construídas de forma 100% estática no Next.js (sem chamadas ao banco), garantindo carregamento instantâneo.
-
----
-
-## 🚫 O que foi deixado de fora e por quê
-
-* **Separação de Perfis de Acesso (RBAC):** Conforme exigido no escopo obrigatório do desafio, a plataforma não possui distinção de visualização entre "Instituição" e "Advogado". Existe um login simples apenas para coletar o e-mail/nome do operador e alimentar a trilha de auditoria.
-* **Integração profunda com Google Drive API:** Diante do prazo, optei por focar na completude das funcionalidades obrigatórias e na estrutura sólida de um storage via Rails (Active Storage ou Cloud próprio). Deixei a complexidade de tokens OAuth do Google para uma etapa posterior, preferindo um upload robusto que não quebre caso a API do Drive estivesse indisponível.
-* **OCR e Leitura Autônoma de PDFs:** Funcionalidade fora do escopo inicial da MVP.
 
 ---
 
