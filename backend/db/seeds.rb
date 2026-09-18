@@ -150,7 +150,7 @@ meses.each_with_index do |mes, idx|
     orientation: "Relatório de salários.", mandatory: true, due_date: vencimento_base + 15.days, status: idx > 8 ? :pendente : :aprovado, position: idx + 1
   )
 
-  # Fiscal (Com histórico massivo de auditoria)
+  # Fiscal 
   doc_fiscal = instituicao.document_items.create!(
     category: cat_tributario, name: "Comprovantes INSS/FGTS - #{mes}/2025",
     orientation: "Guias quitadas.", mandatory: true, due_date: vencimento_base + 20.days, status: idx == 8 ? :correcao_solicitada : (idx > 8 ? :pendente : :aprovado), position: idx + 1

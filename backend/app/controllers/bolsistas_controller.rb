@@ -5,10 +5,8 @@ class BolsistasController < ApplicationController
     page = (params[:page] || 1).to_i
     per_page = 10
     
-    # Inicia a query básica
     query = Bolsista.all
 
-    # Filtro de pesquisa poderoso com ILIKE (PostgreSQL) para ignorar maiúsculas/minúsculas
     if params[:search].present?
       termo = "%#{params[:search]}%"
       query = query.where("name ILIKE :q OR cpf ILIKE :q OR course ILIKE :q OR status ILIKE :q", q: termo)
