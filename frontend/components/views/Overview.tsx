@@ -2,13 +2,14 @@
 
 import { useApi } from '@/lib/api'
 import { Card, Eyebrow, ErrorBanner, Heading, Loading } from '@/components/ui'
-import type { Section } from '@/types'
 import { useSession } from '@/components/auth/SessionProvider'
 import { CheckCircle2, AlertTriangle, ArrowRight, Calendar, BarChart3, ShieldAlert } from 'lucide-react'
+import { useRouter } from 'next/navigation' 
 
-export default function Overview({ go }: { go: (s: Section) => void }) {
+export default function Overview() {
   const { data, isLoading, error } = useApi<any>('/dashboard')
   const { user } = useSession()
+  const router = useRouter() 
 
   const completion = data?.completion_percentage || 0
   
@@ -22,7 +23,6 @@ export default function Overview({ go }: { go: (s: Section) => void }) {
 
   return (
     <>
-      {/* Cabeçalho do Dashboard */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
         <div>
           <span className="text-[10px] uppercase tracking-widest text-[#879087] font-bold">Visão geral · Ciclo 2026</span>
@@ -52,10 +52,8 @@ export default function Overview({ go }: { go: (s: Section) => void }) {
             
             <div className="grid lg:grid-cols-[1.8fr_1fr] gap-6">
               
-              {/* Card Índice de Conformidade */}
               <Card className="p-6 md:p-8">
                 <div className="flex flex-col md:flex-row md:items-start gap-8">
-                  {/* Gráfico Circular Real */}
                   <div className="relative h-32 w-32 shrink-0">
                     <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 100 100">
                       <circle cx="50" cy="50" r="45" fill="none" stroke="#f4f2ea" strokeWidth="8" />
@@ -110,7 +108,10 @@ export default function Overview({ go }: { go: (s: Section) => void }) {
                       </div>
                     </div>
 
-                    <button onClick={() => go('Auditoria')} className="mt-6 text-xs font-bold text-[#aa7a1d] hover:text-[#8a6317] hover:underline flex items-center gap-1 transition-all">
+                    <button 
+                      onClick={() => router.push('/auditoria')} 
+                      className="mt-6 text-xs font-bold text-[#aa7a1d] hover:text-[#8a6317] hover:underline flex items-center gap-1 transition-all"
+                    >
                       Ver diagnóstico completo <ArrowRight size={12} />
                     </button>
                   </div>
@@ -152,7 +153,7 @@ export default function Overview({ go }: { go: (s: Section) => void }) {
                 <div className="mt-8 relative z-10">
                   <strong className="font-serif text-3xl text-[#c49a3c]">301 <span className="text-sm font-sans text-[#98a5b8] font-normal">dias p/ vencimento</span></strong>
                   <button 
-                    onClick={() => go('Prazos e alertas')} 
+                    onClick={() => router.push('/prazos')} 
                     className="w-full mt-5 bg-[#3b4159] hover:bg-[#4a516d] text-white text-xs font-bold py-3 rounded transition-colors shadow-sm"
                   >
                     Planejar renovação
@@ -162,7 +163,7 @@ export default function Overview({ go }: { go: (s: Section) => void }) {
             </div>
 
             <div className="grid md:grid-cols-3 gap-6">
-              <Card className="p-6 transition-all hover:shadow-md">
+              <Card className="p-6 transition-all hover:shadow-md cursor-pointer" onClick={() => router.push('/gratuidade')}>
                 <div className="flex justify-between items-start mb-4">
                   <Eyebrow>Gratuidade apurada</Eyebrow>
                   <span className="bg-[#e7f3ee] text-[#4b8c78] px-2 py-0.5 rounded text-[10px] font-bold">+3.2%</span>
@@ -175,7 +176,7 @@ export default function Overview({ go }: { go: (s: Section) => void }) {
                 </div>
               </Card>
 
-              <Card className="p-6 transition-all hover:shadow-md">
+              <Card className="p-6 transition-all hover:shadow-md cursor-pointer" onClick={() => router.push('/bolsistas')}>
                 <div className="flex justify-between items-start mb-4">
                   <Eyebrow>Bolsas integrais</Eyebrow>
                   <span className="bg-[#f4f2ea] text-[#647078] px-2 py-0.5 rounded text-[10px] font-bold border border-[#e8e1d6]">1/5</span>
@@ -201,7 +202,10 @@ export default function Overview({ go }: { go: (s: Section) => void }) {
                     <span className="flex items-center gap-1 text-[#c49a3c]"><AlertTriangle size={12}/> {pendingDocs}</span>
                   </div>
                 </div>
-                <button onClick={() => go('Documentos')} className="mt-4 w-full text-left text-xs font-bold text-[#aa7a1d] hover:text-[#8a6317] hover:underline flex items-center gap-1">
+                <button 
+                  onClick={() => router.push('/documentos')} 
+                  className="mt-4 w-full text-left text-xs font-bold text-[#aa7a1d] hover:text-[#8a6317] hover:underline flex items-center gap-1"
+                >
                   Abrir Data Room <ArrowRight size={12} />
                 </button>
               </Card>
@@ -209,14 +213,16 @@ export default function Overview({ go }: { go: (s: Section) => void }) {
 
             <div className="grid md:grid-cols-[1fr_1.5fr] gap-6">
               
-              {/* Card Prazos */}
               <Card className="p-6">
                 <div className="flex justify-between items-end mb-6">
                   <div>
                     <Eyebrow>Próximos marcos</Eyebrow>
                     <h3 className="font-serif text-lg text-[#34332f] mt-1">Prazos que pedem atenção</h3>
                   </div>
-                  <button onClick={() => go('Prazos e alertas')} className="text-[11px] text-[#aa7a1d] font-bold hover:underline bg-[#fffaf0] px-2 py-1 rounded">
+                  <button 
+                    onClick={() => router.push('/prazos')} 
+                    className="text-[11px] text-[#aa7a1d] font-bold hover:underline bg-[#fffaf0] px-2 py-1 rounded"
+                  >
                     Ver agenda completa
                   </button>
                 </div>
@@ -235,7 +241,10 @@ export default function Overview({ go }: { go: (s: Section) => void }) {
                           </span>
                         </div>
                         <div>
-                          <h4 className="text-xs font-bold text-[#34332f] leading-tight mt-0.5 hover:text-[#c49a3c] cursor-pointer transition-colors" onClick={() => go('Prazos e alertas')}>
+                          <h4 
+                            className="text-xs font-bold text-[#34332f] leading-tight mt-0.5 hover:text-[#c49a3c] cursor-pointer transition-colors" 
+                            onClick={() => router.push('/prazos')}
+                          >
                             {prazo.name}
                           </h4>
                           <p className="text-[10px] text-[#879087] mt-1 line-clamp-1">{prazo.category}</p>
@@ -247,7 +256,6 @@ export default function Overview({ go }: { go: (s: Section) => void }) {
                 </div>
               </Card>
 
-              {/* Card Gráfico Forecast */}
               <Card className="p-6 flex flex-col justify-between">
                 <div className="flex justify-between items-start mb-2">
                   <div>
@@ -264,7 +272,6 @@ export default function Overview({ go }: { go: (s: Section) => void }) {
                   <span className="text-xs text-[#879087] mb-1">projeção de gratuidade</span>
                 </div>
 
-                {/* Gráfico de Barras Interativo com Tooltip */}
                 <div className="flex items-end gap-1.5 h-28 mt-6">
                   {forecastData.map((h, i) => (
                     <div key={i} className="flex-1 group relative flex flex-col justify-end h-full">
@@ -272,7 +279,6 @@ export default function Overview({ go }: { go: (s: Section) => void }) {
                       <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#34332f] text-white text-[9px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none shadow-lg">
                         {h}%
                       </span>
-                      {/* Barra */}
                       <div 
                         className={`w-full rounded-t-sm transition-all duration-300 ${i === 11 ? 'bg-[#c49a3c]' : 'bg-[#e8dcc8] group-hover:bg-[#c49a3c]/60'}`} 
                         style={{ height: `${h}%` }} 

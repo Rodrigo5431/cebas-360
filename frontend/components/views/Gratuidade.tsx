@@ -41,13 +41,11 @@ export default function Gratuidade() {
       <div className="mt-6 mb-4 max-w-sm">
         <select className="w-full bg-white border border-[#d1c4ae] text-[#34332f] text-sm rounded-md px-4 py-2.5 outline-none focus:border-[#c49a3c] shadow-sm font-bold">
           <option>Educação básica</option>
+          <option>Ensino Superior (Com Prouni)</option>
           <option>Ensino Superior (Sem Prouni)</option>
-          <option>Saúde</option>
-          <option>Assistência Social</option>
         </select>
       </div>
 
-      {/* Banner Escuro: Regra Aplicada */}
       <div className="bg-[#292e43] rounded-xl p-5 text-white flex flex-col md:flex-row md:items-center gap-6 justify-between shadow-md">
         <div className="flex md:items-center gap-6 flex-col md:flex-row">
           <div className="shrink-0">
@@ -64,10 +62,8 @@ export default function Gratuidade() {
         </button>
       </div>
 
-      {/* Área Principal do Simulador */}
       <div className="grid lg:grid-cols-[2fr_1fr] gap-6 mt-6">
         
-        {/* Painel Esquerdo: Inputs */}
         <Card className="p-6 md:p-8">
           <div className="flex justify-between items-start mb-6">
             <div>
@@ -129,7 +125,6 @@ export default function Gratuidade() {
           </div>
         </Card>
 
-        {/* Painel Direito: Resultados */}
         <Card className="p-6 md:p-8 flex flex-col items-center justify-center text-center relative overflow-hidden">
           <span className={`absolute top-6 right-6 text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded border ${isConforme ? 'bg-[#e7f3ee] text-[#4b8c78] border-[#bce0d3]' : 'bg-[#fdf0f0] text-[#d94444] border-[#f5c2c2]'}`}>
             {isConforme ? 'Cenário Conforme' : 'Atenção Necessária'}
@@ -177,7 +172,6 @@ export default function Gratuidade() {
         </Card>
       </div>
 
-      {/* Cards Inferiores: Base Normativa do Motor */}
       <div className="grid md:grid-cols-3 gap-6 mt-6">
         <Card className="p-6">
           <Eyebrow>BÁSICA E PROFISSIONAL</Eyebrow>

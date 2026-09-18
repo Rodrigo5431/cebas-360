@@ -11,10 +11,8 @@ export default function Audit({ onToast }: { onToast: (message: string) => void 
   const { data, isLoading, error } = useApi<any>('/documents')
   const docs = Array.isArray(data) ? data : data?.data || []
 
-  // Estado local para simular o "marcar/desmarcar" na auditoria sem alterar o banco oficial ainda
   const [localChecks, setLocalChecks] = useState<Record<string, boolean>>({})
 
-  // Verifica se o documento está aprovado no banco OU se o usuário marcou agora na simulação
   const isChecked = (doc: any) => {
     if (localChecks[doc.id] !== undefined) return localChecks[doc.id]
     return doc.status === 'aprovado'
@@ -25,7 +23,6 @@ export default function Audit({ onToast }: { onToast: (message: string) => void 
     onToast('Status de simulação alterado.')
   }
 
-  // Agrupa os documentos pelas categorias vindas do banco
   const groups = useMemo(() => {
     return docs.reduce((acc: any, doc: any) => {
       const cat = doc.category_name || 'Geral'
@@ -35,12 +32,10 @@ export default function Audit({ onToast }: { onToast: (message: string) => void 
     }, {})
   }, [docs])
 
-  // Cálculos de Prontidão (Readiness)
   const totalDocs = docs.length
   const approvedDocs = docs.filter((d: any) => isChecked(d)).length
   const readiness = totalDocs ? Math.round((approvedDocs / totalDocs) * 100) : 0
 
-  // Pega os 3 primeiros documentos pendentes para a sidebar de Prioridades
   const priorities = docs.filter((d: any) => !isChecked(d)).slice(0, 3)
 
   return (
@@ -77,7 +72,6 @@ export default function Audit({ onToast }: { onToast: (message: string) => void 
       ) : (
         <div className="grid lg:grid-cols-[1fr_300px] gap-6">
           
-          {/* Coluna Esquerda: Checklist agrupado */}
           <div className="space-y-6">
             {Object.entries(groups).map(([category, items]: [string, any]) => {
               const groupTotal = items.length
@@ -91,7 +85,6 @@ export default function Audit({ onToast }: { onToast: (message: string) => void 
                     <span className="font-serif text-xl font-bold text-[#4b3d2e]">{groupPercent}%</span>
                   </div>
                   
-                  {/* Barra de Progresso do Grupo */}
                   <div className="h-1 w-full bg-[#f4f2ea] rounded-full mb-6 overflow-hidden">
                     <div className="h-full bg-[#c49a3c] transition-all duration-500" style={{ width: `${groupPercent}%` }} />
                   </div>
@@ -123,7 +116,6 @@ export default function Audit({ onToast }: { onToast: (message: string) => void 
             })}
           </div>
 
-          {/* Coluna Direita: Sidebar de Ações */}
           <div className="space-y-4">
             <Card className="p-6">
               <Eyebrow>Próximas ações</Eyebrow>
