@@ -16,6 +16,8 @@ export default function Overview({ onToast }: { onToast?: (msg: string) => void 
   const [localPrazos, setLocalPrazos] = useState<any[]>([])
   const [isEditingCert, setIsEditingCert] = useState(false)
   const [certForm, setCertForm] = useState({ portaria: '', validade: '' })
+  
+  const [localUser, setLocalUser] = useState<{name: string} | null>(null)
 
   const completion = data?.completion_percentage || 0
   const totalDocs = data?.status_counts ? Object.values(data.status_counts).reduce((a: any, b: any) => a + b, 0) as number : 0
@@ -49,6 +51,17 @@ export default function Overview({ onToast }: { onToast?: (msg: string) => void 
 
   const forecastData = data?.forecast_data || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
+  // 1. Carrega o nome do utilizador imediatamente (isolado dos dados da API)
+  useEffect(() => {
+    const userStr = localStorage.getItem('@cebas:user')
+    if (userStr) {
+      try {
+        setLocalUser(JSON.parse(userStr))
+      } catch (e) {}
+    }
+  }, [])
+
+  // 2. Carrega as informações dinâmicas dependentes da API
   useEffect(() => {
     if (data?.upcoming_deadlines) {
       setLocalPrazos(data.upcoming_deadlines.slice(0, 2))
@@ -69,13 +82,22 @@ export default function Overview({ onToast }: { onToast?: (msg: string) => void 
     if (onToast) onToast(action === 'concluido' ? 'Prazo marcado como concluído!' : 'Alerta removido do painel.')
   }
 
+  const displayUser = user?.name || localUser?.name || 'Advogado(a)'
+  
+  // Tratamento inteligente do nome para não cortar o título "Dr." ou "Dra."
+  const nameParts = displayUser.split(' ')
+  const isDoctor = nameParts[0].toLowerCase().includes('dr')
+  const firstName = isDoctor && nameParts.length > 1 
+    ? `${nameParts[0]} ${nameParts[1]}` 
+    : nameParts[0]
+
   return (
     <>
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
         <div>
           <span className="text-[10px] uppercase tracking-widest text-[#879087] font-bold">Visão geral · Ciclo {new Date().getFullYear()}</span>
           <h1 className="font-serif text-3xl text-[#34332f] mt-1">
-            Boa tarde, {user?.name ? user.name.split(' ')[0] : 'utilizador'}.
+            Boa tarde, {firstName}.
           </h1>
           <p className="text-sm text-[#7d837e] mt-1">O seu panorama de conformidade do CEBAS Educação.</p>
         </div>

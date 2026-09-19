@@ -44,6 +44,10 @@ class AlertasController < ApplicationController
   private
 
   def alerta_params
-    params.require(:alerta).permit(:titulo, :category, :mensagem, :due_date, :tipo)
+    if params[:alerta].present?
+      params.require(:alerta).permit(:titulo, :category, :mensagem, :due_date, :tipo)
+    else
+      params.permit(:titulo, :category, :mensagem, :due_date, :tipo)
+    end
   end
 end

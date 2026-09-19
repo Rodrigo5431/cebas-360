@@ -29,6 +29,8 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
 
   const [tasksState, setTasksState] = useState<Record<string, TaskItem[]>>({})
   const [channelsState, setChannelsState] = useState<Record<string, { email: boolean; push: boolean; webhook: boolean }>>({})
+  
+  const [newTaskLabel, setNewTaskLabel] = useState('')
 
   useEffect(() => {
     if (data) {
@@ -65,8 +67,40 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
     const newState = { ...tasksState, [selectedItem.id]: updated }
     setTasksState(newState)
     localStorage.setItem('@cebas360:tasks', JSON.stringify(newState))
+    onToast('Status do item atualizado.')
+  }
+
+  const handleAddTask = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedItem || !newTaskLabel.trim()) return
+
+    const currentTasks = tasksState[selectedItem.id] || defaultTasks
+    const newTask: TaskItem = {
+      id: Date.now().toString(),
+      label: newTaskLabel,
+      done: false
+    }
     
-    onToast('Item do checklist atualizado.')
+    const updated = [...currentTasks, newTask]
+    const newState = { ...tasksState, [selectedItem.id]: updated }
+    
+    setTasksState(newState)
+    localStorage.setItem('@cebas360:tasks', JSON.stringify(newState))
+    setNewTaskLabel('')
+    onToast('Novo item adicionado ao checklist.')
+  }
+
+  const removeTask = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!selectedItem) return
+    
+    const currentTasks = tasksState[selectedItem.id] || defaultTasks
+    const updated = currentTasks.filter(t => t.id !== taskId)
+    
+    const newState = { ...tasksState, [selectedItem.id]: updated }
+    setTasksState(newState)
+    localStorage.setItem('@cebas360:tasks', JSON.stringify(newState))
+    onToast('Item removido do checklist.')
   }
 
   const toggleChannel = (channel: 'email' | 'push' | 'webhook') => {
@@ -77,13 +111,11 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
     const newState = { ...channelsState, [selectedItem.id]: updated }
     setChannelsState(newState)
     localStorage.setItem('@cebas360:channels', JSON.stringify(newState))
-    
     onToast('Canal de alerta atualizado.')
   }
 
   const handleDelete = async () => {
     if (!confirm('Tem a certeza que deseja remover este prazo?')) return
-    
     setView('list')
     try {
       await request(`/alertas/${selectedItem.id}`, { method: 'DELETE' })
@@ -96,39 +128,34 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    
-    setView('list') 
+    setView('list')
     
     const formData = new FormData(e.currentTarget)
     const prioridade = formData.get('prioridade') as string
     
-    const payload = {
-      titulo: formData.get('titulo'),
-      category: formData.get('category'),
-      mensagem: formData.get('mensagem'),
-      due_date: formData.get('data'),
-      tipo: prioridade.includes('Alta') ? 'error' : 'warning'
-    }
+    const payload = new URLSearchParams()
+    payload.append('titulo', (formData.get('titulo') as string) || '')
+    payload.append('category', (formData.get('category') as string) || '')
+    payload.append('mensagem', (formData.get('mensagem') as string) || '')
+    payload.append('due_date', (formData.get('data') as string) || '')
+    payload.append('tipo', prioridade.includes('Alta') ? 'error' : 'warning')
 
     try {
       if (selectedItem) {
-        // Editar
         await request(`/alertas/${selectedItem.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ alerta: payload })
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: payload.toString()
         })
-        onToast('Providência atualizada com sucesso!')
+        onToast('Providência atualizada na base de dados com sucesso!')
       } else {
-        // Criar
         await request('/alertas', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ alerta: payload })
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: payload.toString()
         })
         onToast('Novo alerta configurado na linha do tempo!')
       }
-      
       setShouldFetch(prev => prev + 1) 
     } catch (err: any) {
       onToast(err.message || 'Erro ao salvar o alerta no servidor.')
@@ -140,7 +167,7 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
     const currentTasks = tasksState[selectedItem.id] || defaultTasks
     const currentChannels = channelsState[selectedItem.id] || { email: true, push: true, webhook: false }
     const completedTasks = currentTasks.filter((t) => t.done).length
-    const progressPercent = Math.round((completedTasks / currentTasks.length) * 100)
+    const progressPercent = currentTasks.length > 0 ? Math.round((completedTasks / currentTasks.length) * 100) : 0
 
     return (
       <div className="animate-in fade-in slide-in-from-right-4 duration-300">
@@ -207,30 +234,60 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
                   />
                 </div>
 
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {currentTasks.map((task) => (
-                    <button
-                      key={task.id}
-                      type="button"
-                      onClick={() => toggleTask(task.id)}
-                      className="flex w-full items-center gap-3 rounded-lg border border-transparent p-2 text-left transition hover:border-[#e8e1d6] hover:bg-white"
-                    >
-                      {task.done ? (
-                        <CheckSquare size={18} className="shrink-0 text-[#4b8c78]" />
-                      ) : (
-                        <Square size={18} className="shrink-0 text-[#a38e7a]" />
-                      )}
-                      <span
-                        className={cn(
-                          'text-xs transition-colors',
-                          task.done ? 'text-[#879087] line-through' : 'font-medium text-[#34332f]'
-                        )}
+                    <div key={task.id} className="group flex w-full items-center justify-between gap-3 rounded-lg border border-transparent p-2 transition hover:border-[#e8e1d6] hover:bg-white">
+                      <button
+                        type="button"
+                        onClick={() => toggleTask(task.id)}
+                        className="flex flex-1 items-center gap-3 text-left"
                       >
-                        {task.label}
-                      </span>
-                    </button>
+                        {task.done ? (
+                          <CheckSquare size={18} className="shrink-0 text-[#4b8c78]" />
+                        ) : (
+                          <Square size={18} className="shrink-0 text-[#a38e7a]" />
+                        )}
+                        <span
+                          className={cn(
+                            'text-xs transition-colors',
+                            task.done ? 'text-[#879087] line-through' : 'font-medium text-[#34332f]'
+                          )}
+                        >
+                          {task.label}
+                        </span>
+                      </button>
+                      
+                      <button 
+                        onClick={(e) => removeTask(task.id, e)} 
+                        className="opacity-0 group-hover:opacity-100 p-1 text-[#d94444] hover:bg-[#fdf0f0] rounded transition-all shrink-0"
+                        title="Remover item"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   ))}
+                  
+                  {currentTasks.length === 0 && (
+                    <p className="text-xs text-[#879087] italic p-2">Nenhum item no checklist.</p>
+                  )}
                 </div>
+
+                <form onSubmit={handleAddTask} className="mt-4 flex gap-2 border-t border-[#e8e1d6] pt-4">
+                  <input 
+                    type="text" 
+                    value={newTaskLabel}
+                    onChange={(e) => setNewTaskLabel(e.target.value)}
+                    placeholder="Adicionar novo passo ao checklist..."
+                    className="flex-1 rounded border border-[#d1c4ae] px-3 py-2 text-xs outline-none focus:border-[#4b8c78]"
+                  />
+                  <button 
+                    type="submit" 
+                    disabled={!newTaskLabel.trim()}
+                    className="rounded bg-[#4b8c78] px-3 py-2 text-white transition hover:bg-[#3a6d5d] disabled:opacity-50"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </form>
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-xs text-[#647078]">
