@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useApi } from '@/lib/api'
+import { useApi, request } from '@/lib/api'
 import { Card, Eyebrow, Button, ErrorBanner, Heading, Loading } from '@/components/ui'
 import { ArrowUpRight, Calendar, ChevronLeft, Edit2, Trash2, Plus, CheckSquare, Square, CheckCircle2, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/cn'
@@ -20,7 +20,8 @@ const defaultTasks: TaskItem[] = [
 ]
 
 export default function Deadlines({ onToast }: { onToast: (message: string) => void }) {
-  const { data, isLoading, error } = useApi<any>('/alertas')
+  const [shouldFetch, setShouldFetch] = useState(0)
+  const { data, isLoading, error } = useApi<any>(`/alertas?_t=${shouldFetch}`)
   
   const [view, setView] = useState<'list' | 'details' | 'form'>('list')
   const [localDeadlines, setLocalDeadlines] = useState<any[]>([])
@@ -31,17 +32,16 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
 
   useEffect(() => {
     if (data) {
-      setLocalDeadlines(Array.isArray(data) ? data : data.data || [])
+      const apiData = Array.isArray(data) ? data : data.data || []
+      setLocalDeadlines(apiData)
     }
-  }, [data])
 
-  useEffect(() => {
     const savedTasks = localStorage.getItem('@cebas360:tasks')
     const savedChannels = localStorage.getItem('@cebas360:channels')
 
     if (savedTasks) setTasksState(JSON.parse(savedTasks))
     if (savedChannels) setChannelsState(JSON.parse(savedChannels))
-  }, [])
+  }, [data])
 
   const daysRemaining = 301
   const preparationPercent = 78
@@ -81,20 +81,62 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
     onToast('Canal de alerta atualizado.')
   }
 
-  const handleDelete = () => {
-    setLocalDeadlines((prev) => prev.filter((d) => d.id !== selectedItem.id))
-    onToast('Prazo removido com sucesso.')
+  const handleDelete = async () => {
+    if (!confirm('Tem a certeza que deseja remover este prazo?')) return
+    
     setView('list')
+    try {
+      await request(`/alertas/${selectedItem.id}`, { method: 'DELETE' })
+      onToast('Prazo removido da linha do tempo com sucesso.')
+      setShouldFetch(prev => prev + 1)
+    } catch (err: any) {
+      onToast(err.message || 'Erro ao remover alerta.')
+    }
   }
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    onToast(selectedItem ? 'Providência atualizada com sucesso!' : 'Novo alerta configurado com sucesso!')
-    setView('list')
+    
+    setView('list') 
+    
+    const formData = new FormData(e.currentTarget)
+    const prioridade = formData.get('prioridade') as string
+    
+    const payload = {
+      titulo: formData.get('titulo'),
+      category: formData.get('category'),
+      mensagem: formData.get('mensagem'),
+      due_date: formData.get('data'),
+      tipo: prioridade.includes('Alta') ? 'error' : 'warning'
+    }
+
+    try {
+      if (selectedItem) {
+        // Editar
+        await request(`/alertas/${selectedItem.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ alerta: payload })
+        })
+        onToast('Providência atualizada com sucesso!')
+      } else {
+        // Criar
+        await request('/alertas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ alerta: payload })
+        })
+        onToast('Novo alerta configurado na linha do tempo!')
+      }
+      
+      setShouldFetch(prev => prev + 1) 
+    } catch (err: any) {
+      onToast(err.message || 'Erro ao salvar o alerta no servidor.')
+    }
   }
 
   if (view === 'details' && selectedItem) {
-    const dateObj = new Date(selectedItem.data + 'T00:00:00')
+    const dateObj = new Date((selectedItem.data || selectedItem.due_date) + 'T00:00:00')
     const currentTasks = tasksState[selectedItem.id] || defaultTasks
     const currentChannels = channelsState[selectedItem.id] || { email: true, push: true, webhook: false }
     const completedTasks = currentTasks.filter((t) => t.done).length
@@ -113,7 +155,7 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
           <div className="mb-6 flex flex-col justify-between gap-4 border-b border-[#e8e1d6] pb-6 sm:flex-row sm:items-start">
             <div>
               <Eyebrow>Detalhes da Providência</Eyebrow>
-              <h2 className="mt-2 font-serif text-3xl text-[#34332f]">{selectedItem.titulo}</h2>
+              <h2 className="mt-2 font-serif text-3xl text-[#34332f]">{selectedItem.titulo || selectedItem.name}</h2>
               <span
                 className={cn(
                   'mt-3 inline-block rounded px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest',
@@ -198,9 +240,9 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold uppercase tracking-widest text-[#879087]">
-                    Marco Legal Relacionado
+                    Área
                   </span>
-                  <p className="mt-1 font-medium text-[#34332f]">LC nº 187/2021, Art. 24</p>
+                  <p className="mt-1 font-medium text-[#34332f]">{selectedItem.category || 'Geral'}</p>
                 </div>
               </div>
             </div>
@@ -256,7 +298,7 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
                   ) : (
                     <Square size={16} className="text-[#d1c4ae]" />
                   )}
-                  <span>Disparo via Webhook</span>
+                  <span>Disparo via Webhook ERP</span>
                 </button>
               </div>
             </div>
@@ -294,8 +336,9 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
                   Ação / Título
                 </label>
                 <input
+                  name="titulo"
                   required
-                  defaultValue={selectedItem?.titulo}
+                  defaultValue={selectedItem?.titulo || selectedItem?.name}
                   type="text"
                   className="w-full rounded border border-[#d1c4ae] p-3 text-sm text-[#34332f] outline-none ring-[#c49a3c] focus:border-[#c49a3c] focus:ring-1"
                   placeholder="Ex: Fechar prévia de bolsas 2026.2"
@@ -304,10 +347,11 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
 
               <div>
                 <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#879087]">Área</label>
-                <select className="w-full rounded border border-[#d1c4ae] bg-white p-3 text-sm text-[#34332f] outline-none focus:border-[#c49a3c]">
+                <select name="category" defaultValue={selectedItem?.category || 'Gratuidade'} className="w-full rounded border border-[#d1c4ae] bg-white p-3 text-sm text-[#34332f] outline-none focus:border-[#c49a3c]">
                   <option>Gratuidade</option>
                   <option>Institucional</option>
                   <option>Contábil e Financeiro</option>
+                  <option>Ensino Superior</option>
                 </select>
               </div>
 
@@ -316,6 +360,7 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
                   Responsável
                 </label>
                 <input
+                  name="responsavel"
                   type="text"
                   defaultValue="Compliance Officer"
                   className="w-full rounded border border-[#d1c4ae] p-3 text-sm text-[#34332f] outline-none focus:border-[#c49a3c]"
@@ -327,7 +372,8 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
                   Prioridade
                 </label>
                 <select
-                  defaultValue={selectedItem?.tipo === 'error' ? 'Alta' : 'Média'}
+                  name="prioridade"
+                  defaultValue={selectedItem?.tipo === 'error' ? 'Alta (Crítico)' : 'Média (Atenção)'}
                   className="w-full rounded border border-[#d1c4ae] bg-white p-3 text-sm text-[#34332f] outline-none focus:border-[#c49a3c]"
                 >
                   <option>Alta (Crítico)</option>
@@ -341,6 +387,7 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
                   Marco Regulatório Relacionado
                 </label>
                 <input
+                  name="marco_legal"
                   type="text"
                   className="w-full rounded border border-[#d1c4ae] p-3 text-sm text-[#34332f] outline-none focus:border-[#c49a3c]"
                   placeholder="Ex: Art. 14, LC 187/21"
@@ -352,6 +399,7 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
                   Descrição e Critério de Conclusão
                 </label>
                 <textarea
+                  name="mensagem"
                   required
                   defaultValue={selectedItem?.mensagem}
                   rows={3}
@@ -367,8 +415,9 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
                   Prazo Fatal
                 </label>
                 <input
+                  name="data"
                   required
-                  defaultValue={selectedItem?.data}
+                  defaultValue={selectedItem?.data || selectedItem?.due_date}
                   type="date"
                   className="w-full rounded border border-[#d1c4ae] p-3 text-sm text-[#34332f] outline-none focus:border-[#c49a3c]"
                 />
@@ -392,7 +441,7 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
             </div>
 
             <div className="mt-2 flex justify-end gap-3 border-t border-[#e8e1d6] pt-6">
-              <Button outline onClick={() => setView('list')}>
+              <Button outline onClick={() => setView('list')} type="button">
                 Cancelar
               </Button>
               <Button type="submit">Confirmar Providência</Button>
@@ -434,7 +483,7 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
             <h2 className="mt-2 font-serif text-2xl text-[#34332f]">Marcos do ciclo de renovação</h2>
           </div>
           <Button onClick={() => { setSelectedItem(null); setView('form'); }}>
-            <Plus size={16} /> Novo Alerta
+            <Plus size={16} className="mr-1" /> Novo Alerta
           </Button>
         </div>
 
@@ -443,7 +492,7 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
         ) : (
           <div className="relative ml-3 space-y-8 border-l-2 border-[#e1d5bd] py-2 pl-6">
             {localDeadlines.map((item: any) => {
-              const dateObj = new Date(item.data + 'T00:00:00')
+              const dateObj = new Date((item.data || item.due_date) + 'T00:00:00')
               const isPast = dateObj < new Date()
 
               return (
@@ -460,7 +509,7 @@ export default function Deadlines({ onToast }: { onToast: (message: string) => v
                       <b className={cn('text-[10px] uppercase tracking-widest', isPast ? 'text-[#4b8c78]' : 'text-[#c49a3c]')}>
                         {dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </b>
-                      <h3 className="mt-1 text-sm font-bold text-[#34332f]">{item.titulo}</h3>
+                      <h3 className="mt-1 text-sm font-bold text-[#34332f]">{item.titulo || item.name}</h3>
                       <p className="mt-1 line-clamp-2 max-w-2xl text-xs text-[#879087]">{item.mensagem}</p>
                     </div>
 

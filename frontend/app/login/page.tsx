@@ -36,7 +36,7 @@ export default function LoginPage() {
         
         <div className="mt-6 rounded-lg border border-[#e4d5a8] bg-[#fff8df] px-4 py-3 text-sm text-[#6e5818]">
           <p className="font-semibold">Acesso de demonstração</p>
-          <p className="mt-1 font-mono text-xs">admin@covac.com · senha123</p>
+          <p className="mt-1 font-mono text-xs">advogado@duopen.com.br · password123</p>
         </div>
         
         <form action={formAction} className="mt-8 space-y-5">

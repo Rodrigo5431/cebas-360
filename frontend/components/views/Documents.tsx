@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
-import { Upload, Plus, ChevronLeft, Search, FileText, CheckCircle2, AlertTriangle, AlertCircle, Download, Clock, User } from 'lucide-react'
+import { Upload, Plus, ChevronLeft, ChevronRight, Search, FileText, CheckCircle2, AlertTriangle, AlertCircle, Download, Clock, User } from 'lucide-react'
 import { request } from '@/lib/api'
 import { Card, Eyebrow, Button, ErrorBanner, Heading, Loading, Stat } from '@/components/ui'
 import { cn } from '@/lib/cn'
@@ -19,8 +19,16 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
 
   const [confStatus, setConfStatus] = useState('aprovado')
   const [confNotes, setConfNotes] = useState('')
+  const [confDueDate, setConfDueDate] = useState('')
   
   const [currentUser, setCurrentUser] = useState<{name: string, email: string} | null>(null)
+
+  const fetchDocuments = () => {
+    setState((prev) => ({ ...prev, isLoading: true, error: null }))
+    request<any>(`/documents?page=${currentPage}&search=${encodeURIComponent(search)}`)
+      .then((data) => setState({ data, isLoading: false, error: null }))
+      .catch((error) => setState({ data: null, isLoading: false, error: error instanceof Error ? error.message : 'Erro ao carregar documentos.' }))
+  }
 
   useEffect(() => { setCurrentPage(1) }, [search])
 
@@ -28,14 +36,10 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
     const userStr = localStorage.getItem('@cebas:user')
     if (userStr) setCurrentUser(JSON.parse(userStr))
 
-    let active = true
-    setState((prev) => ({ ...prev, isLoading: true, error: null }))
-    const timer = setTimeout(() => {
-      request<any>(`/documents?page=${currentPage}&search=${encodeURIComponent(search)}`)
-        .then((data) => active && setState({ data, isLoading: false, error: null }))
-        .catch((error) => active && setState({ data: null, isLoading: false, error: error instanceof Error ? error.message : 'Erro.' }))
-    }, 400)
-    return () => { active = false; clearTimeout(timer) }
+    if (view === 'list') {
+      const timer = setTimeout(() => fetchDocuments(), 400)
+      return () => clearTimeout(timer)
+    }
   }, [currentPage, search, view]) 
 
   const handleFilesSelected = (files: FileList | null) => {
@@ -65,26 +69,77 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
 
   const submitBatchUpload = async (e: React.FormEvent) => {
     e.preventDefault()
-    onToast(`${uploadQueue.length} ficheiro(s) enviado(s) por ${currentUser?.name || 'Utilizador'}. Versões atualizadas.`)
-    setUploadQueue([])
-    setView('list')
+    setView('list') 
+    
+    try {
+      for (const item of uploadQueue) {
+        const formData = new FormData()
+        formData.append('file', item.file)
+        formData.append('category', item.category)
+        if (currentUser?.name) formData.append('user_name', currentUser.name)
+        
+        await request('/documents/upload', {
+          method: 'POST',
+          body: formData 
+        })
+      }
+
+      onToast(`${uploadQueue.length} ficheiro(s) enviado(s).`)
+      setUploadQueue([])
+      fetchDocuments()
+    } catch (err: any) {
+      onToast(err.message || 'Erro no upload.')
+    }
   }
 
   const openConference = (doc: any) => {
     setSelectedDoc(doc)
     setConfStatus(doc.status || 'em_revisao')
     setConfNotes('')
+    
+    let formattedDate = ''
+    if (doc.due_date) {
+      formattedDate = new Date(doc.due_date + 'T00:00:00').toISOString().split('T')[0]
+    }
+    setConfDueDate(formattedDate)
+    
     setView('conference')
   }
 
   const submitConference = async (e: React.FormEvent) => {
     e.preventDefault()
     if (confStatus === 'correcao_solicitada' && confNotes.trim() === '') {
-      onToast('Erro: É obrigatório informar o motivo da recusa para a instituição.')
+      onToast('Erro: É obrigatório informar o motivo da recusa.')
       return
     }
-    onToast(`Conferência registada por ${currentUser?.name || 'Advogado'} com sucesso. Trilha atualizada.`)
+
     setView('list')
+
+    try {
+      const payload = new URLSearchParams()
+      payload.append('status', confStatus)
+      payload.append('notes', confNotes)
+      if (confDueDate) payload.append('due_date', confDueDate)
+      if (currentUser?.name) payload.append('user_name', currentUser.name)
+
+      await request(`/documents/${selectedDoc.id}/review`, {
+        method: 'POST', 
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: payload.toString()
+      })
+
+      if (confStatus === 'correcao_solicitada') {
+        onToast(`Documento devolvido e gravado na base.`)
+      } else {
+        onToast(`Data e conferência salvas com sucesso.`)
+      }
+      
+      fetchDocuments()
+    } catch (err: any) {
+      onToast(err.message || 'Erro ao salvar no servidor.')
+    }
   }
 
   const exportCsv = () => {
@@ -109,12 +164,12 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    onToast('Checklist consolidado exportado com sucesso!')
+    onToast('Checklist exportado com sucesso!')
   }
 
   if (view === 'conference' && selectedDoc) {
-    const isEditing = confStatus !== 'aprovado';
-    
+    const previousComments = selectedDoc.versions?.filter((v: any) => v.reason) || []
+
     return (
       <div className="animate-in fade-in slide-in-from-right-4">
         <button onClick={() => setView('list')} className="mb-4 flex items-center gap-1 text-xs font-bold text-[#879087] hover:text-[#34332f]">
@@ -150,7 +205,12 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
                   </div>
                   <div>
                     <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#879087]">Validade</label>
-                    <input type="text" defaultValue={selectedDoc.due_date ? new Date(selectedDoc.due_date + 'T00:00:00').toLocaleDateString('pt-BR') : 'Sem vencimento'} className="w-full rounded border border-[#d1c4ae] p-3 text-sm text-[#34332f] outline-none focus:border-[#c49a3c]" />
+                    <input 
+                      type="date" 
+                      value={confDueDate} 
+                      onChange={(e) => setConfDueDate(e.target.value)} 
+                      className="w-full rounded border border-[#d1c4ae] p-3 text-sm text-[#34332f] outline-none focus:border-[#c49a3c]" 
+                    />
                   </div>
                 </div>
               </div>
@@ -170,32 +230,47 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
                       <option value="aprovado">Aprovado (Audit-ready)</option>
                       <option value="correcao_solicitada">Devolver p/ Correção</option>
                       <option value="nao_aplicavel">Não Aplicável (Dispensado)</option>
+                      <option value="pendente">Pendente (Limpar Status)</option>
                     </select>
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#879087]">
-                      Notas e Motivo {confStatus === 'correcao_solicitada' && <span className="text-[#d94444]">* Obrigatório</span>}
+                    <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#879087] flex justify-between">
+                      <span>Comentários Encadeados {confStatus === 'correcao_solicitada' && <span className="text-[#d94444]">* Obrigatório</span>}</span>
                     </label>
+                    
+                    <div className="space-y-3 mb-4 max-h-32 overflow-y-auto pr-2">
+                      {previousComments.length > 0 ? previousComments.map((v: any, i: number) => (
+                        <div key={i} className="bg-[#f4f2ea] p-3 rounded text-xs border border-[#e8e1d6]">
+                          <strong className="text-[#34332f] block">
+                            {v.reviewed_by || 'Advogado Compliance'} 
+                            <span className="text-[#879087] font-normal text-[10px] ml-1">(Versão {v.version_number})</span>
+                          </strong>
+                          <p className="text-[#647078] mt-1">{v.reason}</p>
+                        </div>
+                      )) : (
+                        <p className="text-xs text-[#879087] italic mt-2">Nenhum comentário anterior.</p>
+                      )}
+                    </div>
+
                     <textarea 
                       value={confNotes}
                       onChange={(e) => setConfNotes(e.target.value)}
                       required={confStatus === 'correcao_solicitada'}
-                      rows={3} 
-                      placeholder={confStatus === 'correcao_solicitada' ? 'Descreva detalhadamente por que o documento foi recusado para a instituição (visível ao cliente)...' : 'Observações internas opcionais...'}
-                      className={cn("w-full resize-none rounded border p-3 text-sm text-[#34332f] outline-none", confStatus === 'correcao_solicitada' && confNotes === '' ? 'border-[#d94444]' : 'border-[#d1c4ae] focus:border-[#c49a3c]')}
+                      rows={2} 
+                      placeholder={confStatus === 'correcao_solicitada' ? 'Adicione um novo comentário detalhando a recusa...' : 'Adicionar comentário à thread...'}
+                      className={cn("w-full resize-none rounded border p-3 text-sm text-[#34332f] outline-none transition-colors", confStatus === 'correcao_solicitada' && confNotes === '' ? 'border-[#d94444] focus:ring-1 focus:ring-[#d94444]' : 'border-[#d1c4ae] focus:border-[#c49a3c]')}
                     />
                   </div>
                 </div>
               </div>
 
               <div className="mt-2 flex justify-end gap-3 pt-4 border-t border-[#e8e1d6]">
-                <Button outline onClick={() => setView('list')}>Cancelar</Button>
+                <Button outline onClick={() => setView('list')} type="button">Cancelar</Button>
                 <Button type="submit">Salvar Conferência e Trilha</Button>
               </div>
             </form>
 
-            {/* Trilha de Auditoria Exigida pelo Desafio */}
             <div className="h-fit rounded-xl border border-[#e8e1d6] bg-[#fdfbf7] p-6">
               <span className="mb-4 block text-[10px] font-bold uppercase tracking-widest text-[#879087]">
                 Trilha de Auditoria
@@ -228,7 +303,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
               </div>
               
               <div className="mt-6 p-3 bg-[#fffaf0] rounded text-[10px] text-[#8a6317] border border-[#f0e6d2]">
-                <strong>Compliance:</strong> As versões anteriores deste documento, se existirem, permanecem seladas e inalteráveis no servidor (Object Storage) garantindo o histórico do Data Room.
+                <strong>Compliance:</strong> As versões anteriores deste documento permanecem inalteráveis garantindo o histórico do Data Room.
               </div>
             </div>
           </div>
@@ -248,7 +323,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
             <div>
               <Eyebrow>UPLOAD E ASSOCIAÇÃO</Eyebrow>
               <h2 className="mt-1 font-serif text-3xl text-[#34332f]">Fila de Upload em Lote</h2>
-              <p className="mt-2 text-xs text-[#879087]">Associe os ficheiros arrastados aos itens exigidos no checklist da instituição.</p>
+              <p className="mt-2 text-xs text-[#879087]">Associe os ficheiros arrastados aos itens exigidos no checklist.</p>
             </div>
           </div>
           
@@ -276,13 +351,10 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
                     <option value="relatorio">Relatório de Execução Anual (Art. 6º)</option>
                     <option value="cnd">Certidões de Regularidade (CND/FGTS)</option>
                   </select>
-                  {item.category !== '' && <p className="text-[9px] text-[#4b8c78] mt-1 flex items-center gap-1"><CheckCircle2 size={10}/> Categoria sugerida automaticamente</p>}
+                  {item.category !== '' && <p className="text-[9px] text-[#4b8c78] mt-1 flex items-center gap-1"><CheckCircle2 size={10}/> Sugerido automaticamente</p>}
                 </div>
               </div>
             ))}
-            <div className="mt-6 p-4 bg-[#fffaf0] border-l-4 border-[#c49a3c] text-xs text-[#8a6317] rounded">
-              <strong>Gestão de Versões:</strong> Se já existir um documento aprovado para a categoria selecionada, este novo ficheiro irá gerar a "Versão 2", preservando a original na trilha de auditoria [Utilizador atual: {currentUser?.name}].
-            </div>
             <div className="mt-6 flex justify-end gap-3 border-t border-[#e8e1d6] pt-6">
               <Button outline onClick={() => { setView('list'); setUploadQueue([]); }}>Cancelar</Button>
               <Button type="submit">Gravar e Associar Ficheiros</Button>
@@ -294,6 +366,13 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
   }
 
   const docs = state.data?.data || []
+  
+  const totalPages = Math.max(1, state.data?.meta?.total_pages || 1)
+  let startPage = Math.max(1, currentPage - 2)
+  let endPage = Math.min(totalPages, startPage + 4)
+  if (endPage - startPage < 4) { startPage = Math.max(1, endPage - 4) }
+  const pages = Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i)
+
   return (
     <div className="animate-in fade-in duration-300">
       <Heading eyebrow="Data room" title="Evidências e documentos" description="Centralize, valide e prepare os documentos que sustentam a certificação." />
@@ -305,7 +384,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
         </div>
         <div className="flex-1 text-center md:text-left">
           <h3 className="text-sm font-bold text-[#34332f]">Upload de ficheiros em lote</h3>
-          <p className="mt-1 text-xs text-[#8a8e84]">Arraste os documentos aqui para enviar vários de uma vez e associá-los ao checklist.</p>
+          <p className="mt-1 text-xs text-[#8a8e84]">Arraste os documentos aqui para enviar vários de uma vez.</p>
         </div>
         <input ref={inputRef} type="file" multiple className="hidden" onChange={(e) => handleFilesSelected(e.target.files)} />
         <div className="flex gap-3">
@@ -391,6 +470,31 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
             </table>
           </div>
         )}
+
+        <div className="flex items-center justify-between border-t border-[#e8e1d6] px-5 py-4 bg-white">
+          <span className="text-[11px] font-bold text-[#7d837e]">
+            Página {currentPage} de {totalPages} (Exibindo 10 documentos por página)
+          </span>
+          <div className="flex items-center gap-2">
+            <Button outline disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>
+              <ChevronLeft size={14} />
+            </Button>
+            {pages.map((page) => (
+              <button 
+                key={page} 
+                onClick={() => setCurrentPage(page)} 
+                className={cn('h-8 w-8 rounded text-xs font-bold transition-colors', 
+                  currentPage === page ? 'bg-[#34332f] text-white' : 'bg-[#f4f2ea] text-[#647078] hover:bg-[#ede8dd]'
+                )}
+              >
+                {page}
+              </button>
+            ))}
+            <Button outline disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)}>
+              <ChevronRight size={14} />
+            </Button>
+          </div>
+        </div>
       </Card>
     </div>
   )

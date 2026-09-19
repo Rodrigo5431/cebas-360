@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { Card, Eyebrow, Heading } from '@/components/ui'
-import { Info, RefreshCw, ArrowRight, BookOpen } from 'lucide-react'
+import { Info, RefreshCw, ArrowRight } from 'lucide-react'
 
-export default function Gratuidade() {
+export default function Gratuidade({ onToast }: { onToast?: (msg: string) => void }) {
   const [pagantes, setPagantes] = useState<number>(1380)
   const [integrais, setIntegrais] = useState<number>(284)
   const [parciais, setParciais] = useState<number>(42)
@@ -23,10 +23,11 @@ export default function Gratuidade() {
     setIntegrais(284)
     setParciais(42)
     setBeneficios(8.4)
+    if (onToast) onToast('Dados acadêmicos e financeiros sincronizados com o ERP.')
   }
 
   return (
-    <>
+    <div className="animate-in fade-in duration-300">
       <Heading
         eyebrow="MOTOR DE REGRAS"
         title="Gratuidade e contrapartidas"
@@ -197,6 +198,6 @@ export default function Gratuidade() {
           </p>
         </Card>
       </div>
-    </>
+    </div>
   )
 }
