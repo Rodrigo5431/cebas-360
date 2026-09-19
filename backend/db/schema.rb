@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_17_153203) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_18_173207) do
   create_schema "extensions"
 
   # These are extensions that must be enabled in order to support this database
@@ -46,6 +46,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_17_153203) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "public.alerta", force: :cascade do |t|
+    t.string "category"
+    t.datetime "created_at", null: false
+    t.date "due_date"
+    t.text "mensagem"
+    t.string "tipo"
+    t.string "titulo"
+    t.datetime "updated_at", null: false
   end
 
   create_table "public.audit_logs", force: :cascade do |t|

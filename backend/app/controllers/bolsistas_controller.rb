@@ -51,4 +51,18 @@ class BolsistasController < ApplicationController
   def bolsista_params
     params.require(:bolsista).permit(:name, :cpf, :course, :scholarship_type, :income, :signed_term, :status)
   end
+  
+  def update
+    bolsista = Bolsista.find(params[:id])
+    bolsista.update!(bolsista_params)
+    render json: { success: true, message: "Dados do bolsista atualizados." }, status: :ok
+  rescue StandardError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  def destroy
+    bolsista = Bolsista.find(params[:id])
+    bolsista.destroy
+    render json: { success: true, message: "Bolsista removido da base." }, status: :ok
+  end
 end

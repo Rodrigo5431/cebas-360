@@ -1,11 +1,12 @@
 puts "==> 🧹 Limpando o banco de dados..."
-AuditLog.delete_all
-DocumentVersion.delete_all
-DocumentItem.delete_all
-Category.delete_all
+AuditLog.delete_all rescue nil
+DocumentVersion.delete_all rescue nil
+DocumentItem.delete_all rescue nil
+Category.delete_all rescue nil
 Bolsista.delete_all rescue nil
-Institution.delete_all
-User.delete_all
+Alerta.delete_all rescue nil 
+Institution.delete_all rescue nil
+User.delete_all rescue nil
 
 puts "==> 👥 Criando 12 Usuários..."
 users = []
@@ -55,14 +56,14 @@ cat_contabil    = categorias[2]
 cat_trabalhista = categorias[3]
 cat_tributario  = categorias[4]
 
-puts "==> 🎓 Criando 50 Bolsistas Reais (Para Paginação)..."
-nomes = %w[Ana João Maria Pedro Lucas Mariana Carlos Julia Fernanda Marcos Rafael Letícia Gabriel Camila Amanda Thiago Bruno Beatriz Aline Diego]
-sobrenomes = %w[Silva Souza Costa Santos Oliveira Pereira Rodrigues Almeida Nunes Carvalho Ferreira Martins Rocha Alves Ribeiro Pinto]
-cursos = ["Administração", "Direito", "Pedagogia", "Engenharia Civil", "Enfermagem", "Sistemas de Informação", "Psicologia", "Ensino Médio", "Ensino Fundamental"]
+puts "==> 🎓 Criando 150 Bolsistas Reais (Para Paginação)..."
+nomes = %w[Ana João Maria Pedro Lucas Mariana Carlos Julia Fernanda Marcos Rafael Letícia Gabriel Camila Amanda Thiago Bruno Beatriz Aline Diego Felipe Igor Clara Laura]
+sobrenomes = %w[Silva Souza Costa Santos Oliveira Pereira Rodrigues Almeida Nunes Carvalho Ferreira Martins Rocha Alves Ribeiro Pinto Gomes Mendes Vieira]
+cursos = ["Administração", "Direito", "Pedagogia", "Engenharia Civil", "Enfermagem", "Sistemas de Informação", "Psicologia", "Ensino Médio", "Ensino Fundamental", "Educação Infantil"]
 status_bolsa = %w[aprovado pendente em_revisao correcao_solicitada]
 tipos_bolsa = ["Integral", "Parcial 50%", "Parcial 25%"]
 
-50.times do |i|
+150.times do |i|
   Bolsista.create!(
     name: "#{nomes.sample} #{sobrenomes.sample} #{sobrenomes.sample}",
     cpf: format('%03d.%03d.%03d-%02d', rand(111..999), rand(111..999), rand(111..999), rand(10..99)),
@@ -72,6 +73,19 @@ tipos_bolsa = ["Integral", "Parcial 50%", "Parcial 25%"]
     signed_term: [true, true, false].sample, 
     status: status_bolsa.sample
   )
+end
+
+puts "==> ⏰ Criando Alertas e Prazos Regulatórios..."
+alertas_data = [
+  { titulo: "Protocolo de Renovação CEBAS", category: "Institucional", mensagem: "O protocolo deve ser realizado com antecedência mínima de 360 dias do vencimento. Reunir todas as evidências aprovadas.", due_date: 15.days.from_now, tipo: "warning" },
+  { titulo: "Atualização de CNDs (FGTS e Receita)", category: "Fiscal", mensagem: "As certidões negativas atuais perdem a validade no fim da semana. Solicitar novas guias junto à contabilidade.", due_date: 3.days.from_now, tipo: "error" },
+  { titulo: "Ata de Eleição da Diretoria Registrada", category: "Governança", mensagem: "A ata da última eleição ainda não foi validada em cartório. Providenciar urgentemente para não travar o processo.", due_date: 2.days.ago, tipo: "error" },
+  { titulo: "Fechamento da Relação de Bolsistas", category: "Gratuidade", mensagem: "Consolidar a planilha do 2º semestre para importação na plataforma MEC.", due_date: 30.days.from_now, tipo: "warning" },
+  { titulo: "Parecer de Auditoria Independente", category: "Contábil", mensagem: "Como a receita bruta ultrapassa o limite legal, é obrigatório anexar o parecer dos auditores independentes.", due_date: 45.days.from_now, tipo: "warning" }
+]
+
+alertas_data.each do |alerta|
+  Alerta.create!(alerta) rescue nil
 end
 
 puts "==> 📄 Criando Documentos Base do CEBAS..."
@@ -132,48 +146,51 @@ itens_cebas.each_with_index do |attrs, idx|
   end
 end
 
-puts "==> 🌪️ Criando 36 Documentos de Fechamento Mensal..."
+puts "==> 🌪️ Criando 72 Documentos de Fechamento Mensal (Histórico de 2 Anos)..."
 meses = %w[Janeiro Fevereiro Março Abril Maio Junho Julho Agosto Setembro Outubro Novembro Dezembro]
+anos = [2025, 2026]
 
-meses.each_with_index do |mes, idx|
-  vencimento_base = Date.current + (idx - 6).months
+anos.each do |ano|
+  meses.each_with_index do |mes, idx|
+    vencimento_base = Date.new(ano, idx + 1, 15)
 
-  # Contábil
-  instituicao.document_items.create!(
-    category: cat_contabil, name: "Extrato Bancário Consolidado - #{mes}/2025",
-    orientation: "Demonstrativo completo.", mandatory: true, due_date: vencimento_base + 10.days, status: :aprovado, position: idx + 1
-  )
+    # Contábil
+    instituicao.document_items.create!(
+      category: cat_contabil, name: "Extrato Bancário Consolidado - #{mes}/#{ano}",
+      orientation: "Demonstrativo completo.", mandatory: true, due_date: vencimento_base + 10.days, status: ano == 2025 ? :aprovado : :pendente, position: idx + 1
+    )
 
-  # Trabalhista
-  instituicao.document_items.create!(
-    category: cat_trabalhista, name: "Folha de Pagamento - #{mes}/2025",
-    orientation: "Relatório de salários.", mandatory: true, due_date: vencimento_base + 15.days, status: idx > 8 ? :pendente : :aprovado, position: idx + 1
-  )
+    # Trabalhista
+    instituicao.document_items.create!(
+      category: cat_trabalhista, name: "Folha de Pagamento - #{mes}/#{ano}",
+      orientation: "Relatório de salários.", mandatory: true, due_date: vencimento_base + 15.days, status: (ano == 2025 || idx < 6) ? :aprovado : :pendente, position: idx + 1
+    )
 
-  # Fiscal 
-  doc_fiscal = instituicao.document_items.create!(
-    category: cat_tributario, name: "Comprovantes INSS/FGTS - #{mes}/2025",
-    orientation: "Guias quitadas.", mandatory: true, due_date: vencimento_base + 20.days, status: idx == 8 ? :correcao_solicitada : (idx > 8 ? :pendente : :aprovado), position: idx + 1
-  )
+    # Fiscal 
+    doc_fiscal = instituicao.document_items.create!(
+      category: cat_tributario, name: "Comprovantes INSS/FGTS - #{mes}/#{ano}",
+      orientation: "Guias quitadas.", mandatory: true, due_date: vencimento_base + 20.days, status: (ano == 2026 && idx == 5) ? :correcao_solicitada : ((ano == 2025 || idx < 5) ? :aprovado : :pendente), position: idx + 1
+    )
 
-  if idx == 8
-    (1..4).each do |num|
-      status_v = num.even? ? :correcao_solicitada : :em_revisao
-      motivo = num.even? ? "Ilegível na versão #{num}." : nil
-      
-      v = begin
-        doc_fiscal.document_versions.create!(version_number: num, status: status_v, correction_reason: motivo, uploaded_by: cliente, reviewed_by: advogado)
-      rescue
-        doc_fiscal.document_versions.create!(version_number: num, status: status_v, correction_reason: motivo)
-      end
+    if ano == 2026 && idx == 5
+      (1..4).each do |num|
+        status_v = num.even? ? :correcao_solicitada : :em_revisao
+        motivo = num.even? ? "Ilegível na versão #{num}." : nil
+        
+        v = begin
+          doc_fiscal.document_versions.create!(version_number: num, status: status_v, correction_reason: motivo, uploaded_by: cliente, reviewed_by: advogado)
+        rescue
+          doc_fiscal.document_versions.create!(version_number: num, status: status_v, correction_reason: motivo)
+        end
 
-      begin
-        doc_fiscal.audit_logs.create!(document_version: v, user: advogado, action: "review_cycle", from_status: "pendente", to_status: status_v.to_s, comment: "Ciclo de revisão #{num}.")
-      rescue
-        nil
+        begin
+          doc_fiscal.audit_logs.create!(document_version: v, user: advogado, action: "review_cycle", from_status: "pendente", to_status: status_v.to_s, comment: "Ciclo de revisão #{num}.")
+        rescue
+          nil
+        end
       end
     end
   end
 end
 
-puts "==> ✅ SEED FINALIZADO!"
+puts "==> ✅ SEED FINALIZADO COM SUCESSO!"

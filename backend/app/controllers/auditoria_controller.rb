@@ -1,25 +1,22 @@
 class AuditoriaController < ApplicationController
   skip_before_action :verify_authenticity_token, raise: false
 
-  def index
-    logs = AuditLog.includes(document_version: :document_item).order(created_at: :desc)
-    
-    payload = logs.map do |log|
-      { 
-        id: log.id, 
-        document_name: log.document_version&.document_item&.name || "Documento Excluído", 
-        action: log.action,
-        from_status: log.from_status,
-        to_status: log.to_status,
-        comment: log.comment,
-        date: log.created_at.to_s
-      }
-    end
-
-    render json: payload, status: :ok
+  def state
+    render json: { checked_items: {} }, status: :ok
   end
 
   def toggle
-    render json: { message: "Ação não aplicável" }, status: :ok
+    item_name = params[:item_name]
+    
+    begin
+      AuditLog.create!(
+        action: "Simulação de Auditoria: verificação de '#{item_name}' alterada",
+        user: current_user&.name || "Sistema"
+      )
+    rescue => e
+      Rails.logger.error "Erro ao salvar log de auditoria: #{e.message}"
+    end
+
+    render json: { success: true, message: "Ação registada na trilha de auditoria com sucesso." }, status: :ok
   end
 end

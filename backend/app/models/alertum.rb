@@ -1,0 +1,2 @@
+class Alertum < ApplicationRecord
+end
