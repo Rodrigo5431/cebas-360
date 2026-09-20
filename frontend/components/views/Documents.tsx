@@ -23,11 +23,12 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
   
   const [currentUser, setCurrentUser] = useState<{name: string, email: string} | null>(null)
 
-  // NOVO: Estados para Múltiplas Instituições
   const [institutions, setInstitutions] = useState<any[]>([])
   const [selectedInstitution, setSelectedInstitution] = useState('')
 
-  // NOVO: Fetch Instituições via Proxy
+  const [selectedCycle, setSelectedCycle] = useState('2026')
+  const cycles = ['2024', '2025', '2026', '2027']
+
   useEffect(() => {
     request<any>('/institutions')
       .then(res => setInstitutions(res.data || []))
@@ -36,14 +37,12 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
 
   const fetchDocuments = () => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }))
-    // NOVO: Parâmetro institution_id incluído na chamada
-    request<any>(`/documents?page=${currentPage}&search=${encodeURIComponent(search)}&institution_id=${selectedInstitution}`)
+    request<any>(`/documents?page=${currentPage}&search=${encodeURIComponent(search)}&institution_id=${selectedInstitution}&cycle=${selectedCycle}`)
       .then((data) => setState({ data, isLoading: false, error: null }))
       .catch((error) => setState({ data: null, isLoading: false, error: error instanceof Error ? error.message : 'Erro ao carregar documentos.' }))
   }
 
-  // NOVO: O useEffect agora escuta a selectedInstitution
-  useEffect(() => { setCurrentPage(1) }, [search, selectedInstitution])
+  useEffect(() => { setCurrentPage(1) }, [search, selectedInstitution, selectedCycle])
 
   useEffect(() => {
     const userStr = localStorage.getItem('@cebas:user')
@@ -53,7 +52,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
       const timer = setTimeout(() => fetchDocuments(), 400)
       return () => clearTimeout(timer)
     }
-  }, [currentPage, search, selectedInstitution, view]) 
+  }, [currentPage, search, selectedInstitution, selectedCycle, view]) 
 
   const handleFilesSelected = (files: FileList | null) => {
     if (!files?.length) return
@@ -80,7 +79,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
     setUploadQueue(newQueue)
   }
 
- const submitBatchUpload = async (e: React.FormEvent) => {
+  const submitBatchUpload = async (e: React.FormEvent) => {
     e.preventDefault()
     setView('list') 
     
@@ -91,8 +90,8 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
         formData.append('category', item.category)
         if (currentUser?.name) formData.append('user_name', currentUser.name)
         if (selectedInstitution) formData.append('institution_id', selectedInstitution)
+        formData.append('cycle', selectedCycle)
         
-        // CORREÇÃO: Utilizar a rota do Proxy em vez do localhost direto para enviar o cookie HttpOnly
         const res = await fetch('/api/proxy/documents/upload', {
           method: 'POST',
           body: formData 
@@ -151,7 +150,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
       })
 
       if (confStatus === 'correcao_solicitada') {
-        onToast(`Documento devolvido e gravado na base.`)
+        onToast(`Documento devolvido e notificação enviada.`)
       } else {
         onToast(`Data e conferência salvas com sucesso.`)
       }
@@ -188,7 +187,6 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
   }
 
   if (view === 'conference' && selectedDoc) {
-    // NOVO: Array de Comentários Encadeados fornecidos pela nova API
     const previousComments = selectedDoc.comments || []
 
     return (
@@ -260,7 +258,6 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
                       <span>Comentários Encadeados {confStatus === 'correcao_solicitada' && <span className="text-[#d94444]">* Obrigatório</span>}</span>
                     </label>
                     
-                    {/* NOVO: Thread de Comentários Visuais */}
                     <div className="space-y-3 mb-4 max-h-48 overflow-y-auto pr-2">
                       {previousComments.length > 0 ? previousComments.map((c: any) => (
                         <div key={c.id} className="bg-[#f4f2ea] p-3 rounded text-xs border border-[#e8e1d6]">
@@ -424,7 +421,6 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
             <h2 className="mt-2 font-serif text-xl text-[#34332f]">Sala de evidências</h2>
           </div>
           
-          {/* NOVO: Filtros por Instituição e Pesquisa */}
           <div className="flex flex-col md:flex-row gap-2">
             {institutions.length > 0 && (
               <div className="flex items-center border border-[#d1c4ae] bg-[#f4f5fb] px-3 rounded focus-within:border-[#4b8c78] transition-colors">
@@ -441,6 +437,19 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
                 </select>
               </div>
             )}
+
+            <div className="flex items-center border border-[#d1c4ae] bg-[#f4f5fb] px-3 rounded focus-within:border-[#4b8c78] transition-colors">
+              <Clock size={15} className="text-[#a38e7a]" />
+              <select
+                value={selectedCycle}
+                onChange={(e) => setSelectedCycle(e.target.value)}
+                className="bg-transparent p-2 text-xs outline-none text-[#34332f] cursor-pointer font-bold"
+              >
+                {cycles.map(year => (
+                  <option key={year} value={year}>Ciclo {year}</option>
+                ))}
+              </select>
+            </div>
 
             <div className="flex items-center border border-[#d1c4ae] bg-[#f4f5fb] px-3 rounded focus-within:border-[#4b8c78] transition-colors">
               <Search size={15} className="text-[#a38e7a]" />
