@@ -4,11 +4,11 @@ Rails.application.routes.draw do
   get "/api/auth/session", to: "sessions#check"
   get "/dashboard", to: "dashboard#show"
   
-  get "/documents", to: "documents#index"
   post "/documents/upload", to: "documents#upload"
-  post "/documents/:id/review", to: "documents#review"
-  get "/documents/export", to: "documents#export"
   post "/documents/classify", to: "documents#classify"
+  get "/documents/export", to: "documents#export"
+  post "/documents/:id/review", to: "documents#review"
+  get "/documents", to: "documents#index"
 
   resources :bolsistas, only: [:index, :create, :update, :destroy]
   resources :alertas, only: [:index, :create, :update, :destroy]

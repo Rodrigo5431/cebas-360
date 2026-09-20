@@ -19,11 +19,16 @@ gem "tailwindcss-rails"
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
 gem "jbuilder"
 
+# Dependências da Aplicação (CORS, Autenticação, Variaveis de Ambiente)
 gem "dotenv-rails"
 gem "bcrypt", "~> 3.1.7"
 gem 'rack-cors'
 gem 'fiddle'
-gem 'google_drive'
+
+# Integração com Google Drive
+gem 'google-apis-drive_v3', '~> 0.60'
+gem 'googleauth'
+gem 'faraday-multipart'
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
@@ -32,7 +37,6 @@ gem "tzinfo-data", platforms: %i[ windows jruby ]
 gem "solid_cache"
 gem "solid_queue"
 gem "solid_cable"
-gem 'pg', '~> 1.1'
 
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
