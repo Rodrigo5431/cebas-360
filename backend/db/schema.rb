@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_20_134420) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_20_141957) do
   create_schema "extensions"
 
   # These are extensions that must be enabled in order to support this database
@@ -106,6 +106,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_20_134420) do
   create_table "public.document_items", force: :cascade do |t|
     t.bigint "category_id", null: false
     t.datetime "created_at", null: false
+    t.string "cycle"
     t.date "due_date"
     t.bigint "institution_id", null: false
     t.boolean "mandatory", default: true, null: false

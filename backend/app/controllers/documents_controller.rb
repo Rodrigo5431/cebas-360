@@ -14,6 +14,10 @@ class DocumentsController < ApplicationController
       query = query.where(institution_id: params[:institution_id])
     end
 
+    if params[:cycle].present?
+      query = query.where(cycle: params[:cycle])
+    end
+
     if params[:search].present?
       termo = "%#{params[:search]}%"
       query = query.where("document_items.name ILIKE :q OR categories.name ILIKE :q", q: termo)
@@ -36,6 +40,7 @@ class DocumentsController < ApplicationController
           due_date: doc.due_date.to_s,
           status: doc.status,
           institution_id: doc.institution_id,
+          cycle: doc.respond_to?(:cycle) ? doc.cycle : nil,
           comments: doc.document_comments.order(created_at: :desc).map do |c|
             {
               id: c.id,
@@ -70,6 +75,7 @@ class DocumentsController < ApplicationController
     category_slug = params[:category]
     user_name = params[:user_name]
     institution_id = params[:institution_id]
+    cycle = params[:cycle].presence || '2026'
 
     return render json: { error: 'Ficheiro não enviado.' }, status: :bad_request unless file.present?
 
@@ -81,11 +87,15 @@ class DocumentsController < ApplicationController
     category ||= Category.create!(name: "Geral", position: 1)
 
     begin
-      document_item = DocumentItem.find_or_create_by(category: category, name: file.original_filename) do |doc|
+      document_item = DocumentItem.find_or_create_by(
+        category: category, 
+        name: file.original_filename,
+        institution_id: institution&.id,
+        cycle: cycle
+      ) do |doc|
         doc.status = 'em_revisao'
         doc.mandatory = true
         doc.due_date = Date.current + 30.days
-        doc.institution = institution if institution 
       end
 
       current_version_number = document_item.document_versions.maximum(:version_number) || 0
@@ -141,7 +151,7 @@ class DocumentsController < ApplicationController
     end
   end
 
-  def review
+def review
     document_item = DocumentItem.find_by(id: params[:id])
     return render json: { error: 'Documento não encontrado.' }, status: :not_found unless document_item
 
@@ -170,9 +180,13 @@ class DocumentsController < ApplicationController
 
       latest_version = document_item.document_versions.order(version_number: :desc).first
       
+      # A CORREÇÃO ESTÁ AQUI: Enviamos "notes" para o correction_reason para passar a validação
+      reason_to_save = notes.present? ? notes : "Sem observações."
+
       if latest_version
         latest_version.update!(
           status: new_status,
+          correction_reason: reason_to_save,
           reviewed_by: reviewer,
           reviewed_at: Time.current
         )
@@ -180,24 +194,44 @@ class DocumentsController < ApplicationController
         latest_version = document_item.document_versions.create!(
           version_number: 1,
           status: new_status,
+          correction_reason: reason_to_save,
           reviewed_by: reviewer,
           reviewed_at: Time.current,
           uploaded_by: reviewer 
         )
       end
 
-      AuditLog.create!(
-        document_version: latest_version,
-        user: reviewer,
-        action: new_status == 'aprovado' ? 'approval' : 'review',
-        from_status: 'em_revisao',
-        to_status: new_status,
-        comment: notes.present? ? notes : "Documento validado com sucesso."
-      ) rescue nil
+      begin
+        AuditLog.create(
+          document_version: latest_version,
+          user: reviewer,
+          action: new_status == 'aprovado' ? 'approval' : 'review',
+          from_status: 'em_revisao',
+          to_status: new_status,
+          comment: notes.present? ? notes : "Documento validado com sucesso."
+        )
+      rescue => audit_error
+        Rails.logger.warn "Falha ao gravar AuditLog: #{audit_error.message}"
+      end
+
+      # O DISPARO DO E-MAIL
+      if new_status == 'correcao_solicitada'
+        begin
+          DocumentMailer.correction_requested(document_item, reviewer&.name || 'Advogado', notes).deliver_now
+          Rails.logger.info "========= EMAIL ENVIADO COM SUCESSO! ========="
+        rescue => mail_error
+          Rails.logger.error "========= ERRO AO ENVIAR EMAIL: #{mail_error.message} ========="
+        end
+      end
 
       render json: { success: true, message: "Gravado na base de dados com sucesso." }, status: :ok
+    
+    rescue ActiveRecord::RecordInvalid => e
+      Rails.logger.error "ERRO DE VALIDAÇÃO: #{e.record.errors.full_messages}"
+      render json: { error: "Erro na base de dados: #{e.record.errors.full_messages.join(', ')}" }, status: :unprocessable_entity
     rescue => e
-      render json: { error: "Erro de validação no banco: #{e.message}" }, status: :unprocessable_entity
+      Rails.logger.error "ERRO GERAL: #{e.message}"
+      render json: { error: "Falha na execução: #{e.message}" }, status: :unprocessable_entity
     end
   end
 
@@ -209,19 +243,25 @@ class DocumentsController < ApplicationController
       documents = documents.where(institution_id: params[:institution_id])
     end
 
+    if params[:cycle].present?
+      documents = documents.where(cycle: params[:cycle])
+    end
+
     csv_data = CSV.generate(headers: true, col_sep: ',') do |csv|
-      csv << ['Documento', 'Categoria', 'Versao', 'Validade', 'Status']
+      csv << ['Documento', 'Categoria', 'Versao', 'Validade', 'Status', 'Ciclo']
       
       documents.each do |doc|
         version = doc.document_versions.count > 0 ? doc.document_versions.count : 1
         due_date = doc.due_date ? doc.due_date.strftime('%d/%m/%Y') : 'Sem vencimento'
+        cycle_val = doc.respond_to?(:cycle) ? doc.cycle : 'N/A'
         
         csv << [
           doc.name,
           doc.category&.name || 'Geral',
           "v.#{version}",
           due_date,
-          doc.status&.upcase || 'PENDENTE'
+          doc.status&.upcase || 'PENDENTE',
+          cycle_val
         ]
       end
     end
