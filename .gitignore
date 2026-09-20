@@ -49,3 +49,5 @@ pnpm-debug.log*
 *.njsproj
 
 **/coverage/
+
+google_drive_credentials.json

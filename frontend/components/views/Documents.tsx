@@ -67,7 +67,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
     setUploadQueue(newQueue)
   }
 
-  const submitBatchUpload = async (e: React.FormEvent) => {
+ const submitBatchUpload = async (e: React.FormEvent) => {
     e.preventDefault()
     setView('list') 
     
@@ -78,17 +78,22 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
         formData.append('category', item.category)
         if (currentUser?.name) formData.append('user_name', currentUser.name)
         
-        await request('/documents/upload', {
+        const res = await fetch('http://localhost:3000/documents/upload', {
           method: 'POST',
           body: formData 
         })
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => null)
+          throw new Error(errorData?.error || `Falha no upload (HTTP ${res.status})`)
+        }
       }
 
-      onToast(`${uploadQueue.length} ficheiro(s) enviado(s).`)
+      onToast(`${uploadQueue.length} ficheiro(s) enviado(s) com sucesso para o Drive!`)
       setUploadQueue([])
-      fetchDocuments()
+      setTimeout(() => fetchDocuments(), 600)
     } catch (err: any) {
-      onToast(err.message || 'Erro no upload.')
+      onToast(err.message || 'Erro no upload em lote.')
     }
   }
 

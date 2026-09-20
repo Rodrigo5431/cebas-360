@@ -51,7 +51,6 @@ export default function Overview({ onToast }: { onToast?: (msg: string) => void 
 
   const forecastData = data?.forecast_data || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
-  // 1. Carrega o nome do utilizador imediatamente (isolado dos dados da API)
   useEffect(() => {
     const userStr = localStorage.getItem('@cebas:user')
     if (userStr) {
@@ -61,7 +60,6 @@ export default function Overview({ onToast }: { onToast?: (msg: string) => void 
     }
   }, [])
 
-  // 2. Carrega as informações dinâmicas dependentes da API
   useEffect(() => {
     if (data?.upcoming_deadlines) {
       setLocalPrazos(data.upcoming_deadlines.slice(0, 2))
@@ -84,7 +82,6 @@ export default function Overview({ onToast }: { onToast?: (msg: string) => void 
 
   const displayUser = user?.name || localUser?.name || 'Advogado(a)'
   
-  // Tratamento inteligente do nome para não cortar o título "Dr." ou "Dra."
   const nameParts = displayUser.split(' ')
   const isDoctor = nameParts[0].toLowerCase().includes('dr')
   const firstName = isDoctor && nameParts.length > 1 
