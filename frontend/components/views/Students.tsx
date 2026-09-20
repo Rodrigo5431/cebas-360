@@ -51,29 +51,29 @@ export default function Students({ onToast }: { onToast: (message: string) => vo
     setView('list') 
     
     const formData = new FormData(e.currentTarget)
-    const payload = {
-      name: formData.get('nome'),
-      cpf: formData.get('cpf'),
-      course: formData.get('curso'),
-      scholarship_type: formData.get('tipo_bolsa'),
-      income: formData.get('renda'),
-      signed_term: formData.get('termo') === 'on',
-      status: formData.get('status')
-    }
+    
+    const payload = new URLSearchParams()
+    payload.append('bolsista[name]', formData.get('nome') as string)
+    payload.append('bolsista[cpf]', formData.get('cpf') as string)
+    payload.append('bolsista[course]', formData.get('curso') as string)
+    payload.append('bolsista[scholarship_type]', formData.get('tipo_bolsa') as string)
+    payload.append('bolsista[income]', formData.get('renda') as string)
+    payload.append('bolsista[signed_term]', formData.get('termo') === 'on' ? 'true' : 'false')
+    payload.append('bolsista[status]', formData.get('status') as string)
 
     try {
       if (selectedStudent) {
         await request(`/bolsistas/${selectedStudent.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bolsista: payload })
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: payload.toString()
         })
         onToast('Dados do bolsista atualizados com sucesso!')
       } else {
         await request('/bolsistas', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bolsista: payload })
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: payload.toString()
         })
         onToast('Bolsista cadastrado com sucesso!')
       }
