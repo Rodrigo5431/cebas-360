@@ -46,9 +46,7 @@ class ApplicationController < ActionController::Base
 
   def require_login
     unless logged_in?
-      self.status = 401
-      self.content_type = "application/json"
-      self.response_body = { error: "Não autorizado. Faça login." }.to_json
+      render json: { error: "Não autorizado. Faça login." }, status: :unauthorized
     end
   end
 end
