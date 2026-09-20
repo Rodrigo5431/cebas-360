@@ -42,27 +42,36 @@ class BolsistasController < ApplicationController
   end
 
   def create
-    bolsista = Bolsista.create!(bolsista_params)
-    render json: { message: "Bolsista cadastrado", id: bolsista.id }, status: :created
+    bolsista = Bolsista.new(bolsista_params)
+    if bolsista.save
+      render json: { message: "Bolsista cadastrado", id: bolsista.id }, status: :created
+    else
+      render json: { error: bolsista.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    end
+  end
+
+  def update
+    bolsista = Bolsista.find_by(id: params[:id])
+    return render json: { error: "Bolsista não encontrado." }, status: :not_found unless bolsista
+
+    if bolsista.update(bolsista_params)
+      render json: { success: true, message: "Dados do bolsista atualizados." }, status: :ok
+    else
+      render json: { error: bolsista.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    end
+  end
+
+  def destroy
+    bolsista = Bolsista.find_by(id: params[:id])
+    return render json: { error: "Bolsista não encontrado." }, status: :not_found unless bolsista
+
+    bolsista.destroy
+    render json: { success: true, message: "Bolsista removido da base." }, status: :ok
   end
 
   private
 
   def bolsista_params
     params.require(:bolsista).permit(:name, :cpf, :course, :scholarship_type, :income, :signed_term, :status)
-  end
-  
-  def update
-    bolsista = Bolsista.find(params[:id])
-    bolsista.update!(bolsista_params)
-    render json: { success: true, message: "Dados do bolsista atualizados." }, status: :ok
-  rescue StandardError => e
-    render json: { error: e.message }, status: :unprocessable_entity
-  end
-
-  def destroy
-    bolsista = Bolsista.find(params[:id])
-    bolsista.destroy
-    render json: { success: true, message: "Bolsista removido da base." }, status: :ok
   end
 end
