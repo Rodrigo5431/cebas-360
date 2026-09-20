@@ -22,7 +22,7 @@ Certifique-se de ter o Ruby, Node.js e PostgreSQL instalados na sua máquina.
 
 ### 1. Clonando o repositório
 ```bash
-git clone [https://github.com/Rodrigo5431/cebas-360.git](https://github.com/Rodrigo5431/cebas-360.git)
+git clone https://github.com/Rodrigo5431/cebas-360.git
 cd cebas-360
 ```
 
@@ -55,7 +55,7 @@ npm install
 ```
 Crie um arquivo `.env` na raiz da pasta `frontend` apontando para o Rails:
 ```env
-API_URL="[http://127.0.0.1:3000](http://127.0.0.1:3000)"
+API_URL="http://127.0.0.1:3000"
 ```
 Inicie o servidor de desenvolvimento:
 ```bash
