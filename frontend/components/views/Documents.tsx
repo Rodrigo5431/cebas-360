@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
-import { Upload, Plus, ChevronLeft, ChevronRight, Search, FileText, CheckCircle2, AlertTriangle, AlertCircle, Download, Clock, User } from 'lucide-react'
+import { Upload, Plus, ChevronLeft, ChevronRight, Search, FileText, CheckCircle2, AlertTriangle, AlertCircle, Download, Clock, User, Building } from 'lucide-react'
 import { request } from '@/lib/api'
 import { Card, Eyebrow, Button, ErrorBanner, Heading, Loading, Stat } from '@/components/ui'
 import { cn } from '@/lib/cn'
@@ -23,14 +23,27 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
   
   const [currentUser, setCurrentUser] = useState<{name: string, email: string} | null>(null)
 
+  // NOVO: Estados para Múltiplas Instituições
+  const [institutions, setInstitutions] = useState<any[]>([])
+  const [selectedInstitution, setSelectedInstitution] = useState('')
+
+  // NOVO: Fetch Instituições via Proxy
+  useEffect(() => {
+    request<any>('/institutions')
+      .then(res => setInstitutions(res.data || []))
+      .catch(err => console.error("Erro ao carregar instituições", err))
+  }, [])
+
   const fetchDocuments = () => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }))
-    request<any>(`/documents?page=${currentPage}&search=${encodeURIComponent(search)}`)
+    // NOVO: Parâmetro institution_id incluído na chamada
+    request<any>(`/documents?page=${currentPage}&search=${encodeURIComponent(search)}&institution_id=${selectedInstitution}`)
       .then((data) => setState({ data, isLoading: false, error: null }))
       .catch((error) => setState({ data: null, isLoading: false, error: error instanceof Error ? error.message : 'Erro ao carregar documentos.' }))
   }
 
-  useEffect(() => { setCurrentPage(1) }, [search])
+  // NOVO: O useEffect agora escuta a selectedInstitution
+  useEffect(() => { setCurrentPage(1) }, [search, selectedInstitution])
 
   useEffect(() => {
     const userStr = localStorage.getItem('@cebas:user')
@@ -40,7 +53,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
       const timer = setTimeout(() => fetchDocuments(), 400)
       return () => clearTimeout(timer)
     }
-  }, [currentPage, search, view]) 
+  }, [currentPage, search, selectedInstitution, view]) 
 
   const handleFilesSelected = (files: FileList | null) => {
     if (!files?.length) return
@@ -77,8 +90,10 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
         formData.append('file', item.file)
         formData.append('category', item.category)
         if (currentUser?.name) formData.append('user_name', currentUser.name)
+        if (selectedInstitution) formData.append('institution_id', selectedInstitution)
         
-        const res = await fetch('http://localhost:3000/documents/upload', {
+        // CORREÇÃO: Utilizar a rota do Proxy em vez do localhost direto para enviar o cookie HttpOnly
+        const res = await fetch('/api/proxy/documents/upload', {
           method: 'POST',
           body: formData 
         })
@@ -173,7 +188,8 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
   }
 
   if (view === 'conference' && selectedDoc) {
-    const previousComments = selectedDoc.versions?.filter((v: any) => v.reason) || []
+    // NOVO: Array de Comentários Encadeados fornecidos pela nova API
+    const previousComments = selectedDoc.comments || []
 
     return (
       <div className="animate-in fade-in slide-in-from-right-4">
@@ -244,17 +260,18 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
                       <span>Comentários Encadeados {confStatus === 'correcao_solicitada' && <span className="text-[#d94444]">* Obrigatório</span>}</span>
                     </label>
                     
-                    <div className="space-y-3 mb-4 max-h-32 overflow-y-auto pr-2">
-                      {previousComments.length > 0 ? previousComments.map((v: any, i: number) => (
-                        <div key={i} className="bg-[#f4f2ea] p-3 rounded text-xs border border-[#e8e1d6]">
-                          <strong className="text-[#34332f] block">
-                            {v.reviewed_by || 'Advogado Compliance'} 
-                            <span className="text-[#879087] font-normal text-[10px] ml-1">(Versão {v.version_number})</span>
-                          </strong>
-                          <p className="text-[#647078] mt-1">{v.reason}</p>
+                    {/* NOVO: Thread de Comentários Visuais */}
+                    <div className="space-y-3 mb-4 max-h-48 overflow-y-auto pr-2">
+                      {previousComments.length > 0 ? previousComments.map((c: any) => (
+                        <div key={c.id} className="bg-[#f4f2ea] p-3 rounded text-xs border border-[#e8e1d6]">
+                          <div className="flex justify-between items-center mb-1 border-b border-[#e8e1d6] pb-1">
+                            <strong className="text-[#34332f] block">{c.author}</strong>
+                            <span className="text-[#879087] font-normal text-[10px]">{c.date}</span>
+                          </div>
+                          <p className="text-[#647078] mt-1 whitespace-pre-wrap">{c.body}</p>
                         </div>
                       )) : (
-                        <p className="text-xs text-[#879087] italic mt-2">Nenhum comentário anterior.</p>
+                        <p className="text-xs text-[#879087] italic mt-2">Nenhum comentário anterior na thread.</p>
                       )}
                     </div>
 
@@ -401,12 +418,30 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
       </Card>
       
       <Card className="mt-4 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e8e1d6] p-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#e8e1d6] p-5">
           <div>
             <Eyebrow>Repositório de Arquivos</Eyebrow>
             <h2 className="mt-2 font-serif text-xl text-[#34332f]">Sala de evidências</h2>
           </div>
-          <div className="flex gap-2">
+          
+          {/* NOVO: Filtros por Instituição e Pesquisa */}
+          <div className="flex flex-col md:flex-row gap-2">
+            {institutions.length > 0 && (
+              <div className="flex items-center border border-[#d1c4ae] bg-[#f4f5fb] px-3 rounded focus-within:border-[#4b8c78] transition-colors">
+                <Building size={15} className="text-[#a38e7a]" />
+                <select
+                  value={selectedInstitution}
+                  onChange={(e) => setSelectedInstitution(e.target.value)}
+                  className="bg-transparent p-2 text-xs outline-none text-[#34332f] cursor-pointer"
+                >
+                  <option value="">Todas as Instituições</option>
+                  {institutions.map(inst => (
+                    <option key={inst.id} value={inst.id}>{inst.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="flex items-center border border-[#d1c4ae] bg-[#f4f5fb] px-3 rounded focus-within:border-[#4b8c78] transition-colors">
               <Search size={15} className="text-[#a38e7a]" />
               <input value={search} onChange={(e) => setSearch(e.target.value)} className="w-56 bg-transparent p-2 text-xs outline-none text-[#34332f]" placeholder="Buscar documento ou status..." />
@@ -447,7 +482,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
 
                         {doc.status === 'correcao_solicitada' && (
                           <div className="mt-1.5 flex items-center gap-1 text-[10px] text-[#d94444] font-bold">
-                            <AlertCircle size={10}/> Ver motivo da recusa
+                            <AlertCircle size={10}/> Ver histórico de recusas
                           </div>
                         )}
                       </td>
