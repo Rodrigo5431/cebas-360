@@ -29,6 +29,9 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
   const [selectedCycle, setSelectedCycle] = useState('2026')
   const cycles = ['2024', '2025', '2026', '2027']
 
+  // NOVO: Estado para feedback visual durante o drag and drop
+  const [isDragging, setIsDragging] = useState(false)
+
   useEffect(() => {
     request<any>('/institutions')
       .then(res => setInstitutions(res.data || []))
@@ -397,7 +400,20 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
       <Heading eyebrow="Data room" title="Evidências e documentos" description="Centralize, valide e prepare os documentos que sustentam a certificação." />
       {state.error && <ErrorBanner message={state.error} />}
       
-      <Card className="mb-6 flex flex-col md:flex-row items-center gap-6 border-dashed border-2 border-[#c49a3c]/40 bg-[#fffaf0]/50 hover:bg-[#fffaf0] p-6 transition-colors relative">
+      {/* NOVO: Eventos nativos de drag-and-drop e estilo condicional no Card */}
+      <Card 
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+        onDragLeave={(e) => { e.preventDefault(); setIsDragging(false) }}
+        onDrop={(e) => { 
+          e.preventDefault()
+          setIsDragging(false)
+          handleFilesSelected(e.dataTransfer.files) 
+        }}
+        className={cn(
+          "mb-6 flex flex-col md:flex-row items-center gap-6 border-dashed border-2 p-6 transition-colors relative", 
+          isDragging ? "border-[#4b8c78] bg-[#e7f3ee]" : "border-[#c49a3c]/40 bg-[#fffaf0]/50 hover:bg-[#fffaf0]"
+        )}
+      >
         <div className="h-12 w-12 rounded-full bg-[#f4f2ea] flex items-center justify-center shrink-0">
           <Upload className="text-[#c49a3c]" size={24} />
         </div>
@@ -406,7 +422,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
           <p className="mt-1 text-xs text-[#8a8e84]">Arraste os documentos aqui para enviar vários de uma vez.</p>
         </div>
         <input ref={inputRef} type="file" multiple className="hidden" onChange={(e) => handleFilesSelected(e.target.files)} />
-        <div className="flex gap-3">
+        <div className="flex gap-3 relative z-10 pointer-events-auto">
           <Button outline onClick={exportCsv}>
             <Download size={14} className="mr-1" /> Exportar checklist
           </Button>

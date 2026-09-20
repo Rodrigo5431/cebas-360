@@ -1,7 +1,8 @@
 Rails.application.routes.draw do
-  post "/session", to: "sessions#create"
-  delete "/session", to: "sessions#destroy"
+  post "/api/auth/session", to: "sessions#create"
   get "/api/auth/session", to: "sessions#check"
+  delete "/api/auth/session", to: "sessions#destroy"
+
   get "/dashboard", to: "dashboard#show"
   
   post "/documents/upload", to: "documents#upload"
@@ -11,7 +12,6 @@ Rails.application.routes.draw do
   get "/documents", to: "documents#index"
 
   get "/institutions", to: "institutions#index"
-
   resources :bolsistas, only: [:index, :create, :update, :destroy]
   resources :alertas, only: [:index, :create, :update, :destroy]
 
