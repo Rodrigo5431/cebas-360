@@ -24,30 +24,22 @@ class SessionsController < ApplicationController
       encoded_payload = Base64.strict_encode64(jwt_payload.to_json)
       mock_jwt = "fake_header.#{encoded_payload}.fake_signature"
 
-      self.status = 200
-      self.content_type = "application/json"
-      self.response_body = { 
+      render json: { 
         message: "Autenticado com sucesso", 
         token: mock_jwt, 
         user: { id: user.id, name: user.name, email: user.email } 
-      }.to_json
+      }, status: :ok
     else
-      self.status = 401
-      self.content_type = "application/json"
-      self.response_body = { error: "E-mail ou senha inválidos" }.to_json
+      render json: { error: "E-mail ou senha inválidos" }, status: :unauthorized
     end
   end
 
   def check
-    self.status = 200
-    self.content_type = "application/json"
-    self.response_body = { user: { id: current_user.id, name: current_user.name } }.to_json
+    render json: { user: { id: current_user.id, name: current_user.name } }, status: :ok
   end
 
   def destroy
     cookies.delete(:duopen_uid)
-    self.status = 200
-    self.content_type = "application/json"
-    self.response_body = { message: "Sessão encerrada com sucesso" }.to_json
+    render json: { message: "Sessão encerrada com sucesso" }, status: :ok
   end
 end
