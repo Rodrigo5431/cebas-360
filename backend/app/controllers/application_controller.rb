@@ -34,11 +34,9 @@ class ApplicationController < ActionController::Base
     uid ||= cookies[:duopen_uid]
 
     if uid.present?
-      @current_user ||= User.instantiate({ 
-        'id' => uid, 
-        'name' => 'Advogado / Analista', 
-        'email' => 'advogado@cebas360.com' 
-      })
+      @current_user ||= Rails.cache.fetch("user_auth_#{uid}", expires_in: 1.hour) do
+        User.find_by(id: uid)
+      end
     end
   end
 
