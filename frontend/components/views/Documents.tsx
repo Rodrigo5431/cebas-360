@@ -10,6 +10,7 @@ import type { ApiState } from '@/types'
 export default function Documents({ onToast }: { onToast: (message: string) => void }) {
   const [currentPage, setCurrentPage] = useState(1)
   const [search, setSearch] = useState('')
+  const [shouldFetch, setShouldFetch] = useState(0)
   const [state, setState] = useState<ApiState<any>>({ data: null, isLoading: true, error: null })
   
   const [view, setView] = useState<'list' | 'upload_batch' | 'conference'>('list')
@@ -29,33 +30,44 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
   const [selectedCycle, setSelectedCycle] = useState('2026')
   const cycles = ['2024', '2025', '2026', '2027']
 
-  // NOVO: Estado para feedback visual durante o drag and drop
   const [isDragging, setIsDragging] = useState(false)
 
   useEffect(() => {
     request<any>('/institutions')
       .then(res => setInstitutions(res.data || []))
       .catch(err => console.error("Erro ao carregar instituições", err))
-  }, [])
-
-  const fetchDocuments = () => {
-    setState((prev) => ({ ...prev, isLoading: true, error: null }))
-    request<any>(`/documents?page=${currentPage}&search=${encodeURIComponent(search)}&institution_id=${selectedInstitution}&cycle=${selectedCycle}`)
-      .then((data) => setState({ data, isLoading: false, error: null }))
-      .catch((error) => setState({ data: null, isLoading: false, error: error instanceof Error ? error.message : 'Erro ao carregar documentos.' }))
-  }
-
-  useEffect(() => { setCurrentPage(1) }, [search, selectedInstitution, selectedCycle])
-
-  useEffect(() => {
+      
     const userStr = localStorage.getItem('@cebas:user')
     if (userStr) setCurrentUser(JSON.parse(userStr))
+  }, [])
 
-    if (view === 'list') {
-      const timer = setTimeout(() => fetchDocuments(), 400)
-      return () => clearTimeout(timer)
+  useEffect(() => { 
+    setCurrentPage(1) 
+  }, [search, selectedInstitution, selectedCycle])
+
+  useEffect(() => {
+    if (view !== 'list') return
+    
+    let active = true
+    setState((prev) => ({ ...prev, isLoading: true, error: null }))
+    
+    const delay = search ? 400 : 0
+    
+    const timer = setTimeout(() => {
+      request<any>(`/documents?page=${currentPage}&search=${encodeURIComponent(search)}&institution_id=${selectedInstitution}&cycle=${selectedCycle}`)
+        .then((data) => {
+          if (active) setState({ data, isLoading: false, error: null })
+        })
+        .catch((error) => {
+          if (active) setState({ data: null, isLoading: false, error: error instanceof Error ? error.message : 'Erro ao carregar documentos.' })
+        })
+    }, delay)
+
+    return () => {
+      active = false
+      clearTimeout(timer)
     }
-  }, [currentPage, search, selectedInstitution, selectedCycle, view]) 
+  }, [currentPage, search, selectedInstitution, selectedCycle, view, shouldFetch]) 
 
   const handleFilesSelected = (files: FileList | null) => {
     if (!files?.length) return
@@ -108,7 +120,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
 
       onToast(`${uploadQueue.length} ficheiro(s) enviado(s) com sucesso para o Drive!`)
       setUploadQueue([])
-      setTimeout(() => fetchDocuments(), 600)
+      setShouldFetch(p => p + 1)
     } catch (err: any) {
       onToast(err.message || 'Erro no upload em lote.')
     }
@@ -158,7 +170,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
         onToast(`Data e conferência salvas com sucesso.`)
       }
       
-      fetchDocuments()
+      setShouldFetch(p => p + 1)
     } catch (err: any) {
       onToast(err.message || 'Erro ao salvar no servidor.')
     }
@@ -400,7 +412,6 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
       <Heading eyebrow="Data room" title="Evidências e documentos" description="Centralize, valide e prepare os documentos que sustentam a certificação." />
       {state.error && <ErrorBanner message={state.error} />}
       
-      {/* NOVO: Eventos nativos de drag-and-drop e estilo condicional no Card */}
       <Card 
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
         onDragLeave={(e) => { e.preventDefault(); setIsDragging(false) }}

@@ -10,20 +10,15 @@ class DocumentsController < ApplicationController
 
     query = DocumentItem.includes(:category, :document_versions, document_comments: :user).joins(:category)
 
-    if params[:institution_id].present?
-      query = query.where(institution_id: params[:institution_id])
-    end
-
-    if params[:cycle].present?
-      query = query.where(cycle: params[:cycle])
-    end
+    query = query.where(institution_id: params[:institution_id]) if params[:institution_id].present?
+    query = query.where(cycle: params[:cycle]) if params[:cycle].present?
 
     if params[:search].present?
       termo = "%#{params[:search]}%"
       query = query.where("document_items.name ILIKE :q OR categories.name ILIKE :q", q: termo)
     end
 
-    total_items = query.count
+    total_items = query.distinct.count(:id)
     total_pages = (total_items.to_f / per_page).ceil
     offset = (page - 1) * per_page
 
@@ -41,15 +36,18 @@ class DocumentsController < ApplicationController
           status: doc.status,
           institution_id: doc.institution_id,
           cycle: doc.respond_to?(:cycle) ? doc.cycle : nil,
-          comments: doc.document_comments.order(created_at: :desc).map do |c|
+          
+          # OTIMIZAÇÃO N+1: sort_by na memória em vez de .order (que acionava a BD)
+          comments: doc.document_comments.sort_by { |c| c.created_at || Time.at(0) }.reverse.map do |c|
             {
               id: c.id,
               author: c.user&.name || 'Sistema',
               body: c.body,
-              date: c.created_at.strftime('%d/%m %H:%M')
+              date: c.created_at&.strftime('%d/%m %H:%M')
             }
           end,
-          versions: doc.document_versions.sort_by { |v| -v.version_number }.map do |v|
+          
+          versions: doc.document_versions.sort_by { |v| -(v.version_number || 0) }.map do |v|
             { 
               version_number: v.version_number, 
               status: v.status, 
@@ -60,11 +58,7 @@ class DocumentsController < ApplicationController
           end
         }
       end,
-      meta: { 
-        current_page: page, 
-        total_pages: total_pages == 0 ? 1 : total_pages, 
-        total_items: total_items 
-      }
+      meta: { current_page: page, total_pages: total_pages == 0 ? 1 : total_pages, total_items: total_items }
     }
 
     render json: payload, status: :ok
@@ -151,7 +145,7 @@ class DocumentsController < ApplicationController
     end
   end
 
-def review
+  def review
     document_item = DocumentItem.find_by(id: params[:id])
     return render json: { error: 'Documento não encontrado.' }, status: :not_found unless document_item
 
@@ -179,8 +173,6 @@ def review
       end
 
       latest_version = document_item.document_versions.order(version_number: :desc).first
-      
-      # A CORREÇÃO ESTÁ AQUI: Enviamos "notes" para o correction_reason para passar a validação
       reason_to_save = notes.present? ? notes : "Sem observações."
 
       if latest_version
@@ -214,23 +206,19 @@ def review
         Rails.logger.warn "Falha ao gravar AuditLog: #{audit_error.message}"
       end
 
-      # O DISPARO DO E-MAIL
       if new_status == 'correcao_solicitada'
         begin
           DocumentMailer.correction_requested(document_item, reviewer&.name || 'Advogado', notes).deliver_now
-          Rails.logger.info "========= EMAIL ENVIADO COM SUCESSO! ========="
         rescue => mail_error
           Rails.logger.error "========= ERRO AO ENVIAR EMAIL: #{mail_error.message} ========="
         end
       end
 
-      render json: { success: true, message: "Gravado na base de dados com sucesso." }, status: :ok
+      render json: { success: true, message: "Gravado com sucesso." }, status: :ok
     
     rescue ActiveRecord::RecordInvalid => e
-      Rails.logger.error "ERRO DE VALIDAÇÃO: #{e.record.errors.full_messages}"
       render json: { error: "Erro na base de dados: #{e.record.errors.full_messages.join(', ')}" }, status: :unprocessable_entity
     rescue => e
-      Rails.logger.error "ERRO GERAL: #{e.message}"
       render json: { error: "Falha na execução: #{e.message}" }, status: :unprocessable_entity
     end
   end
@@ -239,30 +227,18 @@ def review
     require 'csv'
     documents = DocumentItem.includes(:category, :document_versions).order('categories.name ASC')
 
-    if params[:institution_id].present?
-      documents = documents.where(institution_id: params[:institution_id])
-    end
-
-    if params[:cycle].present?
-      documents = documents.where(cycle: params[:cycle])
-    end
+    documents = documents.where(institution_id: params[:institution_id]) if params[:institution_id].present?
+    documents = documents.where(cycle: params[:cycle]) if params[:cycle].present?
 
     csv_data = CSV.generate(headers: true, col_sep: ',') do |csv|
       csv << ['Documento', 'Categoria', 'Versao', 'Validade', 'Status', 'Ciclo']
       
       documents.each do |doc|
-        version = doc.document_versions.count > 0 ? doc.document_versions.count : 1
+        version = doc.document_versions.size > 0 ? doc.document_versions.size : 1
         due_date = doc.due_date ? doc.due_date.strftime('%d/%m/%Y') : 'Sem vencimento'
         cycle_val = doc.respond_to?(:cycle) ? doc.cycle : 'N/A'
         
-        csv << [
-          doc.name,
-          doc.category&.name || 'Geral',
-          "v.#{version}",
-          due_date,
-          doc.status&.upcase || 'PENDENTE',
-          cycle_val
-        ]
+        csv << [doc.name, doc.category&.name || 'Geral', "v.#{version}", due_date, doc.status&.upcase || 'PENDENTE', cycle_val]
       end
     end
 

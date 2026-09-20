@@ -19,15 +19,27 @@ export default function Students({ onToast }: { onToast: (message: string) => vo
   useEffect(() => { setCurrentPage(1) }, [search])
 
   useEffect(() => {
-    if (view === 'form') return
+    if (view !== 'list') return
+    
     let active = true
     setState((prev) => ({ ...prev, isLoading: true, error: null }))
+    
+    const delay = search ? 400 : 0
+    
     const timer = setTimeout(() => {
       request<any>(`/bolsistas?page=${currentPage}&search=${encodeURIComponent(search)}&_t=${shouldFetch}`)
-        .then((data) => active && setState({ data, isLoading: false, error: null }))
-        .catch((error) => active && setState({ data: null, isLoading: false, error: error instanceof Error ? error.message : 'Erro.' }))
-    }, 400)
-    return () => { active = false; clearTimeout(timer) }
+        .then((data) => {
+          if (active) setState({ data, isLoading: false, error: null })
+        })
+        .catch((error) => {
+          if (active) setState({ data: null, isLoading: false, error: error instanceof Error ? error.message : 'Erro.' })
+        })
+    }, delay)
+    
+    return () => { 
+      active = false
+      clearTimeout(timer) 
+    }
   }, [currentPage, search, view, shouldFetch])
 
   const openForm = (student: any = null) => {

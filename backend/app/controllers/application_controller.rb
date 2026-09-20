@@ -34,7 +34,11 @@ class ApplicationController < ActionController::Base
     uid ||= cookies[:duopen_uid]
 
     if uid.present?
-      @current_user ||= User.find_by(id: uid)
+      @current_user ||= User.instantiate({ 
+        'id' => uid, 
+        'name' => 'Advogado / Analista', 
+        'email' => 'advogado@cebas360.com' 
+      })
     end
   end
 

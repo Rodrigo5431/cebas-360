@@ -1,4 +1,6 @@
 Rails.application.routes.draw do
+  get "up" => "rails/health#show", as: :rails_health_check
+
   post "/api/auth/session", to: "sessions#create"
   get "/api/auth/session", to: "sessions#check"
   delete "/api/auth/session", to: "sessions#destroy"
