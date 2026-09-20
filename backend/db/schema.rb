@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_20_001415) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_20_134420) do
   create_schema "extensions"
 
   # These are extensions that must be enabled in order to support this database
@@ -93,6 +93,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_20_001415) do
     t.index ["name"], name: "index_categories_on_name", unique: true
   end
 
+  create_table "public.document_comments", force: :cascade do |t|
+    t.text "body"
+    t.datetime "created_at", null: false
+    t.bigint "document_item_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["document_item_id"], name: "index_document_comments_on_document_item_id"
+    t.index ["user_id"], name: "index_document_comments_on_user_id"
+  end
+
   create_table "public.document_items", force: :cascade do |t|
     t.bigint "category_id", null: false
     t.datetime "created_at", null: false
@@ -149,6 +159,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_20_001415) do
   add_foreign_key "public.audit_logs", "public.document_items"
   add_foreign_key "public.audit_logs", "public.document_versions"
   add_foreign_key "public.audit_logs", "public.users"
+  add_foreign_key "public.document_comments", "public.document_items"
+  add_foreign_key "public.document_comments", "public.users"
   add_foreign_key "public.document_items", "public.categories"
   add_foreign_key "public.document_items", "public.institutions"
   add_foreign_key "public.document_versions", "public.document_items"

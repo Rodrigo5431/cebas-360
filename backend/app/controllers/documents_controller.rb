@@ -1,3 +1,5 @@
+require 'fileutils'
+
 class DocumentsController < ApplicationController
   skip_before_action :verify_authenticity_token, raise: false
   skip_before_action :require_login, only: [:upload], raise: false
@@ -6,7 +8,11 @@ class DocumentsController < ApplicationController
     page = (params[:page] || 1).to_i
     per_page = 10
 
-    query = DocumentItem.includes(:category, :document_versions).joins(:category)
+    query = DocumentItem.includes(:category, :document_versions, document_comments: :user).joins(:category)
+
+    if params[:institution_id].present?
+      query = query.where(institution_id: params[:institution_id])
+    end
 
     if params[:search].present?
       termo = "%#{params[:search]}%"
@@ -29,11 +35,19 @@ class DocumentsController < ApplicationController
           mandatory: doc.mandatory,
           due_date: doc.due_date.to_s,
           status: doc.status,
+          institution_id: doc.institution_id,
+          comments: doc.document_comments.order(created_at: :desc).map do |c|
+            {
+              id: c.id,
+              author: c.user&.name || 'Sistema',
+              body: c.body,
+              date: c.created_at.strftime('%d/%m %H:%M')
+            }
+          end,
           versions: doc.document_versions.sort_by { |v| -v.version_number }.map do |v|
             { 
               version_number: v.version_number, 
               status: v.status, 
-              reason: v.correction_reason,
               uploaded_by: v.uploaded_by&.name || "Sistema",
               reviewed_by: v.reviewed_by&.name,
               drive_url: v.respond_to?(:drive_url) ? v.drive_url : nil
@@ -55,18 +69,18 @@ class DocumentsController < ApplicationController
     file = params[:file]
     category_slug = params[:category]
     user_name = params[:user_name]
+    institution_id = params[:institution_id]
 
     return render json: { error: 'Ficheiro não enviado.' }, status: :bad_request unless file.present?
 
     actor = current_user || User.find_by(name: user_name) || User.first
-    institution = Institution.first rescue nil
+    institution = institution_id.present? ? Institution.find_by(id: institution_id) : Institution.first
 
     category = Category.where("name ILIKE ?", "%#{category_slug}%").first
     category ||= Category.first
     category ||= Category.create!(name: "Geral", position: 1)
 
     begin
-      # === CORREÇÃO: Passamos a instituição para não falhar a validação (belongs_to) ===
       document_item = DocumentItem.find_or_create_by(category: category, name: file.original_filename) do |doc|
         doc.status = 'em_revisao'
         doc.mandatory = true
@@ -81,7 +95,22 @@ class DocumentsController < ApplicationController
       begin
         drive_data = GoogleDriveService.new.upload_file(file)
       rescue => e
-        Rails.logger.error "[GoogleDrive] Falha no upload: #{e.message}"
+        Rails.logger.error "[GoogleDrive] Falha ou Cota Excedida: #{e.message}"
+      end
+
+      local_url = nil
+      unless drive_data
+        upload_dir = Rails.root.join('public', 'uploads')
+        FileUtils.mkdir_p(upload_dir) unless File.directory?(upload_dir)
+        
+        safe_filename = "#{Time.now.to_i}_#{file.original_filename.gsub(/[^0-9A-Za-z.\-]/, '_')}"
+        file_path = upload_dir.join(safe_filename)
+        
+        File.open(file_path, 'wb') do |f|
+          f.write(file.read)
+        end
+        
+        local_url = "http://localhost:3000/uploads/#{safe_filename}"
       end
 
       version_params = {
@@ -93,6 +122,8 @@ class DocumentsController < ApplicationController
       if drive_data.is_a?(Hash)
         version_params[:drive_id] = drive_data[:drive_id] if DocumentVersion.column_names.include?('drive_id')
         version_params[:drive_url] = drive_data[:web_link] if DocumentVersion.column_names.include?('drive_url')
+      elsif local_url
+        version_params[:drive_url] = local_url if DocumentVersion.column_names.include?('drive_url')
       end
 
       document_item.document_versions.create!(version_params)
@@ -104,7 +135,6 @@ class DocumentsController < ApplicationController
         drive_synced: drive_data.present?
       }, status: :created
     rescue ActiveRecord::RecordInvalid => e
-      # Se a base de dados recusar, devolve o erro EXATO para o seu Toast no Front-end!
       render json: { error: "Erro de Base de Dados: #{e.record.errors.full_messages.join(', ')}" }, status: :unprocessable_entity
     rescue => e
       render json: { error: "Falha interna ao gravar: #{e.message}" }, status: :unprocessable_entity
@@ -129,25 +159,20 @@ class DocumentsController < ApplicationController
     begin
       update_params = { status: new_status }
       update_params[:due_date] = new_due_date if new_due_date.present?
-      
       document_item.update!(update_params)
+
+      if notes.present?
+        document_item.document_comments.create!(
+          body: notes,
+          user: reviewer
+        )
+      end
 
       latest_version = document_item.document_versions.order(version_number: :desc).first
       
-      new_thread_note = notes.presence
-      if new_thread_note
-        timestamp = Time.current.strftime('%d/%m %H:%M')
-        author = reviewer&.name || 'Sistema'
-        formatted_note = "[#{timestamp} - #{author}] #{new_thread_note}"
-      end
-      
       if latest_version
-        combined_notes = latest_version.correction_reason
-        combined_notes = [combined_notes, formatted_note].compact.join("\n\n") if formatted_note
-
         latest_version.update!(
           status: new_status,
-          correction_reason: combined_notes,
           reviewed_by: reviewer,
           reviewed_at: Time.current
         )
@@ -155,7 +180,6 @@ class DocumentsController < ApplicationController
         latest_version = document_item.document_versions.create!(
           version_number: 1,
           status: new_status,
-          correction_reason: formatted_note,
           reviewed_by: reviewer,
           reviewed_at: Time.current,
           uploaded_by: reviewer 
@@ -179,8 +203,11 @@ class DocumentsController < ApplicationController
 
   def export
     require 'csv'
-
     documents = DocumentItem.includes(:category, :document_versions).order('categories.name ASC')
+
+    if params[:institution_id].present?
+      documents = documents.where(institution_id: params[:institution_id])
+    end
 
     csv_data = CSV.generate(headers: true, col_sep: ',') do |csv|
       csv << ['Documento', 'Categoria', 'Versao', 'Validade', 'Status']

@@ -10,6 +10,8 @@ Rails.application.routes.draw do
   post "/documents/:id/review", to: "documents#review"
   get "/documents", to: "documents#index"
 
+  get "/institutions", to: "institutions#index"
+
   resources :bolsistas, only: [:index, :create, :update, :destroy]
   resources :alertas, only: [:index, :create, :update, :destroy]
 

@@ -1,7 +1,8 @@
 class DocumentItem < ApplicationRecord
-  belongs_to :institution
+  belongs_to :institution, optional: true
   belongs_to :category
   has_many :document_versions, -> { order(version_number: :desc) }, dependent: :destroy
+  has_many :document_comments, dependent: :destroy
   has_many :audit_logs, dependent: :destroy
 
   enum :status, {
