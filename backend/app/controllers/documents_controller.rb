@@ -2,7 +2,7 @@ require 'fileutils'
 
 class DocumentsController < ApplicationController
   skip_before_action :verify_authenticity_token, raise: false
-  skip_before_action :require_login, only: [:upload], raise: false
+  skip_before_action :require_login, only: [:upload, :create], raise: false
 
   def index
     page = (params[:page] || 1).to_i
@@ -37,7 +37,6 @@ class DocumentsController < ApplicationController
           institution_id: doc.institution_id,
           cycle: doc.respond_to?(:cycle) ? doc.cycle : nil,
           
-          # OTIMIZAÇÃO N+1: sort_by na memória em vez de .order (que acionava a BD)
           comments: doc.document_comments.sort_by { |c| c.created_at || Time.at(0) }.reverse.map do |c|
             {
               id: c.id,
@@ -62,6 +61,43 @@ class DocumentsController < ApplicationController
     }
 
     render json: payload, status: :ok
+  end
+
+  def create
+    raw_body = request.raw_post.to_s
+    body = raw_body.empty? ? {} : JSON.parse(raw_body) rescue {}
+
+    category_name = body["category"] || "Geral"
+    category = Category.where("name ILIKE ?", "%#{category_name}%").first
+    category ||= Category.create!(name: category_name, position: 1)
+
+    doc = DocumentItem.new(
+      name: body["name"] || "Nova Evidência",
+      category: category,
+      institution_id: body["institution_id"] || request.query_parameters[:institution_id] || Institution.first&.id,
+      cycle: body["cycle"] || request.query_parameters[:cycle] || "2026",
+      status: body["status"] || "pendente",
+      mandatory: true
+    )
+
+    if doc.save
+      doc.document_versions.create!(
+        version_number: 1,
+        status: doc.status,
+        uploaded_by: current_user || User.first
+      )
+
+      if body["notes"].present?
+        doc.document_comments.create!(
+          body: body["notes"],
+          user: current_user || User.first
+        )
+      end
+
+      render json: { message: "Evidência criada com sucesso!", document: doc }, status: :created
+    else
+      render json: { error: doc.errors.full_messages.join(", ") }, status: :unprocessable_entity
+    end
   end
 
   def upload
