@@ -34,9 +34,7 @@ class ApplicationController < ActionController::Base
     uid ||= cookies[:duopen_uid]
 
     if uid.present?
-      @current_user ||= Rails.cache.fetch("user_auth_#{uid}", expires_in: 1.hour) do
-        User.find_by(id: uid)
-      end
+      @current_user ||= User.find_by(id: uid)
     end
   end
 
@@ -46,9 +44,7 @@ class ApplicationController < ActionController::Base
 
   def require_login
     unless logged_in?
-      self.status = 401
-      self.content_type = "application/json"
-      self.response_body = { error: "Não autorizado. Faça login." }.to_json
+      render json: { error: "Não autorizado. Faça login." }, status: :unauthorized
     end
   end
 end

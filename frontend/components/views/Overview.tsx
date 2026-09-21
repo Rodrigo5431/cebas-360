@@ -18,8 +18,38 @@ export default function Overview({ onToast }: { onToast?: (msg: string) => void 
   const [certForm, setCertForm] = useState({ portaria: '', validade: '' })
   
   const [localUser, setLocalUser] = useState<{name: string} | null>(null)
+  const [simulatedCompletion, setSimulatedCompletion] = useState<number | null>(null)
 
-  const completion = data?.completion_percentage || 0
+  // CORREÇÃO: Lê a simulação de auditoria do localStorage e ajusta a percentagem somando os overrides locais aos aprovados do servidor
+  useEffect(() => {
+    const calculateSimulatedCompletion = () => {
+      const saved = localStorage.getItem('@cebas360:audit_simulation')
+      if (saved && data?.status_counts) {
+        try {
+          const parsed = JSON.parse(saved)
+          const baseApproved = data.status_counts.aprovado || 0
+          const totalDocs = Object.values(data.status_counts).reduce((a: any, b: any) => a + b, 0) as number
+          
+          if (totalDocs > 0) {
+            const explicitTrue = Object.values(parsed).filter((v) => v === true).length
+            const explicitFalse = Object.values(parsed).filter((v) => v === false).length
+            
+            if (Object.keys(parsed).length > 0) {
+              const adjustedApproved = Math.max(0, Math.min(totalDocs, baseApproved + explicitTrue - explicitFalse))
+              const computed = Math.round((adjustedApproved / totalDocs) * 100)
+              setSimulatedCompletion(computed)
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    calculateSimulatedCompletion()
+    window.addEventListener('storage', calculateSimulatedCompletion)
+    return () => window.removeEventListener('storage', calculateSimulatedCompletion)
+  }, [data])
+
+  const completion = simulatedCompletion !== null ? simulatedCompletion : (data?.completion_percentage || 0)
   const totalDocs = data?.status_counts ? Object.values(data.status_counts).reduce((a: any, b: any) => a + b, 0) as number : 0
   const approvedDocs = data?.status_counts?.aprovado || 0
   const pendingDocs = (data?.status_counts?.pendente || 0) + (data?.status_counts?.correcao_solicitada || 0)

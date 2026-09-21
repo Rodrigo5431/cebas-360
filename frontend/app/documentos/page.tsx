@@ -1,11 +1,9 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Documents from '@/components/views/Documents'
-import { InteractiveModal } from '@/components/ui'
+import { useState } from "react";
+import Documents from "@/components/views/Documents";
 
 export default function DocumentosPage() {
-  const [, setToast] = useState<string | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
-  return <><Documents open={() => setModalOpen(true)} onToast={setToast} />{modalOpen && <InteractiveModal title="Nova evidência" close={() => setModalOpen(false)} onSaved={setToast} />}</>
+  const [, setToast] = useState<string | null>(null);
+  return <Documents onToast={setToast} />;
 }

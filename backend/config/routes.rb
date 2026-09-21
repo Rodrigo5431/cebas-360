@@ -13,6 +13,7 @@ Rails.application.routes.draw do
   get "/documents/export", to: "documents#export"
   post "/documents/:id/review", to: "documents#review"
   get "/documents", to: "documents#index"
+  post "/documents", to: "documents#create"
 
   get "/institutions", to: "institutions#index"
   resources :bolsistas, only: [:index, :create, :update, :destroy]
