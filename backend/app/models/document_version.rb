@@ -5,7 +5,10 @@ class DocumentVersion < ApplicationRecord
   has_one_attached :file
   has_many :audit_logs
 
-  enum :status, { pendente: 0, em_revisao: 1, aprovado: 2, correcao_solicitada: 3 }
+  enum :status, {
+    pendente: 0, em_revisao: 1, aprovado: 2,
+    correcao_solicitada: 3, nao_aplicavel: 4
+  }
 
   validates :version_number, presence: true, uniqueness: { scope: :document_item_id }
   validates :correction_reason, presence: true, if: -> { status == "correcao_solicitada" }

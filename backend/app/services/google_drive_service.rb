@@ -3,7 +3,7 @@ require 'googleauth'
 
 class GoogleDriveService
   APPLICATION_NAME = 'Plataforma Documental CEBAS'.freeze
-  FOLDER_ID = ENV.fetch('GOOGLE_DRIVE_FOLDER_ID', '')
+  ROOT_FOLDER_ID = ENV.fetch('GOOGLE_DRIVE_FOLDER_ID', '')
 
   def initialize
     @drive_service = Google::Apis::DriveV3::DriveService.new
@@ -26,12 +26,14 @@ class GoogleDriveService
     end
   end
 
-  def upload_file(uploaded_file, custom_name = nil)
+  def upload_file(uploaded_file, custom_name: nil, institution: nil, category: nil)
     return nil unless @drive_service.authorization
+
+    parent_id = resolve_folder_path(institution, category)
 
     file_metadata = {
       name: custom_name || uploaded_file.original_filename,
-      parents: [FOLDER_ID]
+      parents: [parent_id]
     }
 
     uploaded = @drive_service.create_file(
@@ -41,12 +43,34 @@ class GoogleDriveService
       content_type: uploaded_file.content_type
     )
 
-    {
-      drive_id: uploaded.id,
-      web_link: uploaded.web_view_link
-    }
+    { drive_id: uploaded.id, web_link: uploaded.web_view_link }
   rescue StandardError => e
     Rails.logger.error "[GoogleDrive] Erro no upload OAuth: #{e.message}"
     nil
+  end
+
+  private
+
+  def resolve_folder_path(institution, category)
+    parent = ROOT_FOLDER_ID
+    if institution.present?
+      name = institution.cnpj.present? ? "#{institution.name} - #{institution.cnpj}" : institution.name
+      parent = find_or_create_folder(name, parent)
+    end
+    parent = find_or_create_folder(category.name, parent) if category.present?
+    parent
+  end
+
+  def find_or_create_folder(name, parent_id)
+    safe_name = name.to_s.gsub("'", "\\\\'")
+    query = "name = '#{safe_name}' and mimeType = 'application/vnd.google-apps.folder' and '#{parent_id}' in parents and trashed = false"
+    existing = @drive_service.list_files(q: query, fields: 'files(id, name)', spaces: 'drive').files&.first
+    return existing.id if existing
+
+    folder = @drive_service.create_file(
+      { name: name, mime_type: 'application/vnd.google-apps.folder', parents: [parent_id] },
+      fields: 'id'
+    )
+    folder.id
   end
 end
