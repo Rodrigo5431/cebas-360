@@ -4,6 +4,13 @@ class DocumentsController < ApplicationController
   skip_before_action :verify_authenticity_token, raise: false
   skip_before_action :require_login, only: [:upload, :create], raise: false
 
+  CATEGORY_SLUG_MAP = {
+    'estatuto'  => 'Mantenedora',
+    'balanco'   => 'Contábil & Financeiro',
+    'relatorio' => 'Mantenedora',
+    'cnd'       => 'Fiscal & Tributário'
+  }.freeze
+
   def index
     page = (params[:page] || 1).to_i
     per_page = 10
@@ -36,7 +43,7 @@ class DocumentsController < ApplicationController
           status: doc.status,
           institution_id: doc.institution_id,
           cycle: doc.respond_to?(:cycle) ? doc.cycle : nil,
-          
+
           comments: doc.document_comments.sort_by { |c| c.created_at || Time.at(0) }.reverse.map do |c|
             {
               id: c.id,
@@ -45,11 +52,11 @@ class DocumentsController < ApplicationController
               date: c.created_at&.strftime('%d/%m %H:%M')
             }
           end,
-          
+
           versions: doc.document_versions.sort_by { |v| -(v.version_number || 0) }.map do |v|
-            { 
-              version_number: v.version_number, 
-              status: v.status, 
+            {
+              version_number: v.version_number,
+              status: v.status,
               uploaded_by: v.uploaded_by&.name || "Sistema",
               reviewed_by: v.reviewed_by&.name,
               drive_url: v.respond_to?(:drive_url) ? v.drive_url : nil
@@ -67,9 +74,7 @@ class DocumentsController < ApplicationController
     raw_body = request.raw_post.to_s
     body = raw_body.empty? ? {} : JSON.parse(raw_body) rescue {}
 
-    category_name = body["category"] || "Geral"
-    category = Category.where("name ILIKE ?", "%#{category_name}%").first
-    category ||= Category.create!(name: category_name, position: 1)
+    category = resolve_category(body["category"])
 
     doc = DocumentItem.new(
       name: body["name"] || "Nova Evidência",
@@ -111,14 +116,11 @@ class DocumentsController < ApplicationController
 
     actor = current_user || User.find_by(name: user_name) || User.first
     institution = institution_id.present? ? Institution.find_by(id: institution_id) : Institution.first
-
-    category = Category.where("name ILIKE ?", "%#{category_slug}%").first
-    category ||= Category.first
-    category ||= Category.create!(name: "Geral", position: 1)
+    category = resolve_category(category_slug)
 
     begin
       document_item = DocumentItem.find_or_create_by(
-        category: category, 
+        category: category,
         name: file.original_filename,
         institution_id: institution&.id,
         cycle: cycle
@@ -128,12 +130,14 @@ class DocumentsController < ApplicationController
         doc.due_date = Date.current + 30.days
       end
 
+      previous_status = document_item.status
+
       current_version_number = document_item.document_versions.maximum(:version_number) || 0
       next_version = current_version_number + 1
 
       drive_data = nil
       begin
-        drive_data = GoogleDriveService.new.upload_file(file)
+        drive_data = GoogleDriveService.new.upload_file(file, institution: institution, category: category)
       rescue => e
         Rails.logger.error "[GoogleDrive] Falha ou Cota Excedida: #{e.message}"
       end
@@ -142,14 +146,14 @@ class DocumentsController < ApplicationController
       unless drive_data
         upload_dir = Rails.root.join('public', 'uploads')
         FileUtils.mkdir_p(upload_dir) unless File.directory?(upload_dir)
-        
+
         safe_filename = "#{Time.now.to_i}_#{file.original_filename.gsub(/[^0-9A-Za-z.\-]/, '_')}"
         file_path = upload_dir.join(safe_filename)
-        
+
         File.open(file_path, 'wb') do |f|
           f.write(file.read)
         end
-        
+
         local_url = "http://localhost:3000/uploads/#{safe_filename}"
       end
 
@@ -166,11 +170,25 @@ class DocumentsController < ApplicationController
         version_params[:drive_url] = local_url if DocumentVersion.column_names.include?('drive_url')
       end
 
-      document_item.document_versions.create!(version_params)
+      new_version = document_item.document_versions.create!(version_params)
       document_item.update!(status: 'em_revisao')
 
-      render json: { 
-        success: true, 
+      begin
+        AuditLog.create!(
+          document_item: document_item,
+          document_version: new_version,
+          user: actor,
+          action: 'upload',
+          from_status: previous_status,
+          to_status: 'em_revisao',
+          comment: "Upload da versão #{next_version} via plataforma."
+        )
+      rescue => audit_error
+        Rails.logger.warn "Falha ao gravar AuditLog de upload: #{audit_error.message}"
+      end
+
+      render json: {
+        success: true,
         message: "Upload da versão #{next_version} registado.",
         drive_synced: drive_data.present?
       }, status: :created
@@ -189,7 +207,7 @@ class DocumentsController < ApplicationController
     notes = params[:notes]
     new_due_date = params[:due_date]
     user_name = params[:user_name]
-    
+
     reviewer = current_user || User.find_by(name: user_name) || User.first
 
     if new_status == 'correcao_solicitada' && notes.blank?
@@ -197,6 +215,8 @@ class DocumentsController < ApplicationController
     end
 
     begin
+      previous_status = document_item.status
+
       update_params = { status: new_status }
       update_params[:due_date] = new_due_date if new_due_date.present?
       document_item.update!(update_params)
@@ -225,16 +245,23 @@ class DocumentsController < ApplicationController
           correction_reason: reason_to_save,
           reviewed_by: reviewer,
           reviewed_at: Time.current,
-          uploaded_by: reviewer 
+          uploaded_by: reviewer
         )
       end
 
       begin
-        AuditLog.create(
+        audit_action = case new_status
+                        when 'aprovado' then 'approval'
+                        when 'correcao_solicitada' then 'correction_request'
+                        else 'status_change'
+                        end
+
+        AuditLog.create!(
+          document_item: document_item,
           document_version: latest_version,
           user: reviewer,
-          action: new_status == 'aprovado' ? 'approval' : 'review',
-          from_status: 'em_revisao',
+          action: audit_action,
+          from_status: previous_status,
           to_status: new_status,
           comment: notes.present? ? notes : "Documento validado com sucesso."
         )
@@ -251,7 +278,7 @@ class DocumentsController < ApplicationController
       end
 
       render json: { success: true, message: "Gravado com sucesso." }, status: :ok
-    
+
     rescue ActiveRecord::RecordInvalid => e
       render json: { error: "Erro na base de dados: #{e.record.errors.full_messages.join(', ')}" }, status: :unprocessable_entity
     rescue => e
@@ -268,12 +295,12 @@ class DocumentsController < ApplicationController
 
     csv_data = CSV.generate(headers: true, col_sep: ',') do |csv|
       csv << ['Documento', 'Categoria', 'Versao', 'Validade', 'Status', 'Ciclo']
-      
+
       documents.each do |doc|
         version = doc.document_versions.size > 0 ? doc.document_versions.size : 1
         due_date = doc.due_date ? doc.due_date.strftime('%d/%m/%Y') : 'Sem vencimento'
         cycle_val = doc.respond_to?(:cycle) ? doc.cycle : 'N/A'
-        
+
         csv << [doc.name, doc.category&.name || 'Geral', "v.#{version}", due_date, doc.status&.upcase || 'PENDENTE', cycle_val]
       end
     end
@@ -283,5 +310,25 @@ class DocumentsController < ApplicationController
 
   def classify
     render json: { message: "Não implementado." }, status: :ok
+  end
+
+  private
+
+  def resolve_category(term)
+    return default_category if term.blank?
+
+    mapped_name = CATEGORY_SLUG_MAP[term.to_s.downcase]
+    category = Category.find_by(name: mapped_name) if mapped_name
+    category ||= Category.where("name ILIKE ?", "%#{term}%").first
+    category ||= Category.find_or_create_by(name: term) do |c|
+      c.position = (Category.maximum(:position) || 0) + 1
+    end
+    category
+  end
+
+  def default_category
+    Category.find_or_create_by(name: "Geral") do |c|
+      c.position = (Category.maximum(:position) || 0) + 1
+    end
   end
 end
