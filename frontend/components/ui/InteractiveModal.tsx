@@ -13,17 +13,15 @@ export function InteractiveModal({ title, close, onSaved }: { title: string; clo
   
   const [isSaving, setIsSaving] = useState(false)
   
-  // Valores por defeito para garantir que o formulário de evidência tem sempre dados
   const [form, setForm] = useState<Record<string, string>>({
-    category: 'Institucional',
+    category: 'Mantenedora',
     status: 'pendente'
   })
 
-  // Campos mais limpos e focados na necessidade de cada área
   const fields = isStudent
     ? ['name', 'cpf', 'course', 'scholarship', 'income', 'term', 'notes']
     : isEvidence
-      ? ['name', 'category', 'status', 'notes'] // Simplificado: sem ficheiro, apenas metadados
+      ? ['name', 'category', 'status', 'notes'] 
       : ['title', 'area', 'owner', 'deadline', 'priority', 'description']
 
   const labels: Record<string, string> = {
@@ -46,7 +44,6 @@ export function InteractiveModal({ title, close, onSaved }: { title: string; clo
       onSaved('Registro criado com sucesso na base de dados.')
       close()
       
-      // Pequeno atraso para o servidor processar e depois recarrega a tabela
       setTimeout(() => window.location.reload(), 600)
     } catch (error) {
       onSaved(error instanceof Error ? error.message : 'Falha ao salvar registro.')
@@ -78,10 +75,10 @@ export function InteractiveModal({ title, close, onSaved }: { title: string; clo
               <span className="uppercase tracking-wider text-[#879087] mb-1.5 block">{labels[field]}</span>
               
               {field === 'category' && isEvidence ? (
-                <select required value={form[field] || 'Institucional'} onChange={(e) => setForm({ ...form, [field]: e.target.value })} className="mt-1 w-full rounded-md border border-[#d9d0c0] bg-white p-3 text-sm outline-none focus:border-[#c29121] font-normal text-[#34332f]">
-                  <option value="Institucional">Institucional</option>
-                  <option value="Contábil e Financeiro">Contábil e Financeiro</option>
-                  <option value="Gratuidade e Bolsistas">Gratuidade e Bolsistas</option>
+                <select required value={form[field] || 'Mantenedora'} onChange={(e) => setForm({ ...form, [field]: e.target.value })} className="mt-1 w-full rounded-md border border-[#d9d0c0] bg-white p-3 text-sm outline-none focus:border-[#c29121] font-normal text-[#34332f]">
+                  <option value="Mantenedora">Institucional (Mantenedora)</option>
+                  <option value="Contábil & Financeiro">Contábil e Financeiro</option>
+                  <option value="Bolsistas e Benefícios">Gratuidade e Bolsistas</option>
                 </select>
               ) : field === 'status' && isEvidence ? (
                 <select required value={form[field] || 'pendente'} onChange={(e) => setForm({ ...form, [field]: e.target.value })} className="mt-1 w-full rounded-md border border-[#d9d0c0] bg-white p-3 text-sm outline-none focus:border-[#c29121] font-normal text-[#34332f]">
