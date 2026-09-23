@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
-import { Upload, Plus, ChevronLeft, ChevronRight, Search, FileText, CheckCircle2, AlertTriangle, AlertCircle, Download, Clock, User, Building } from 'lucide-react'
+import { Upload, Plus, ChevronLeft, ChevronRight, Search, FileText, CheckCircle2, AlertTriangle, AlertCircle, Download, Clock, User, Building, Tag } from 'lucide-react'
 import { request } from '@/lib/api'
 import { Card, Eyebrow, Button, ErrorBanner, Heading, Loading, Stat } from '@/components/ui'
 import { cn } from '@/lib/cn'
@@ -27,6 +27,9 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
   const [institutions, setInstitutions] = useState<any[]>([])
   const [selectedInstitution, setSelectedInstitution] = useState('')
 
+  const [categories, setCategories] = useState<any[]>([])
+  const [selectedCategory, setSelectedCategory] = useState('')
+
   const [selectedCycle, setSelectedCycle] = useState('2026')
   const cycles = ['2024', '2025', '2026', '2027']
 
@@ -36,6 +39,10 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
     request<any>('/institutions')
       .then(res => setInstitutions(res.data || []))
       .catch(err => console.error("Erro ao carregar instituições", err))
+
+    request<any>('/categories')
+      .then(res => setCategories(res.data || []))
+      .catch(err => console.error("Erro ao carregar categorias", err))
       
     const userStr = localStorage.getItem('@cebas:user')
     if (userStr) setCurrentUser(JSON.parse(userStr))
@@ -43,7 +50,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
 
   useEffect(() => { 
     setCurrentPage(1) 
-  }, [search, selectedInstitution, selectedCycle])
+  }, [search, selectedInstitution, selectedCategory, selectedCycle])
 
   useEffect(() => {
     if (view !== 'list') return
@@ -54,7 +61,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
     const delay = search ? 400 : 0
     
     const timer = setTimeout(() => {
-      request<any>(`/documents?page=${currentPage}&search=${encodeURIComponent(search)}&institution_id=${selectedInstitution}&cycle=${selectedCycle}`)
+      request<any>(`/documents?page=${currentPage}&search=${encodeURIComponent(search)}&institution_id=${selectedInstitution}&category_id=${selectedCategory}&cycle=${selectedCycle}`)
         .then((data) => {
           if (active) setState({ data, isLoading: false, error: null })
         })
@@ -67,7 +74,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
       active = false
       clearTimeout(timer)
     }
-  }, [currentPage, search, selectedInstitution, selectedCycle, view, shouldFetch]) 
+  }, [currentPage, search, selectedInstitution, selectedCategory, selectedCycle, view, shouldFetch]) 
 
   const handleFilesSelected = (files: FileList | null) => {
     if (!files?.length) return
@@ -400,7 +407,6 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
   }
 
   const docs = state.data?.data || []
-  
   const totalPages = Math.max(1, state.data?.meta?.total_pages || 1)
   let startPage = Math.max(1, currentPage - 2)
   let endPage = Math.min(totalPages, startPage + 4)
@@ -448,7 +454,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
             <h2 className="mt-2 font-serif text-xl text-[#34332f]">Sala de evidências</h2>
           </div>
           
-          <div className="flex flex-col md:flex-row gap-2">
+          <div className="flex flex-col md:flex-row flex-wrap gap-2">
             {institutions.length > 0 && (
               <div className="flex items-center border border-[#d1c4ae] bg-[#f4f5fb] px-3 rounded focus-within:border-[#4b8c78] transition-colors">
                 <Building size={15} className="text-[#a38e7a]" />
@@ -460,6 +466,22 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
                   <option value="">Todas as Instituições</option>
                   {institutions.map(inst => (
                     <option key={inst.id} value={inst.id}>{inst.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {categories.length > 0 && (
+              <div className="flex items-center border border-[#d1c4ae] bg-[#f4f5fb] px-3 rounded focus-within:border-[#4b8c78] transition-colors">
+                <Tag size={15} className="text-[#a38e7a]" />
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="bg-transparent p-2 text-xs outline-none text-[#34332f] cursor-pointer"
+                >
+                  <option value="">Todas as Categorias</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
                 </select>
               </div>

@@ -18,6 +18,7 @@ Rails.application.routes.draw do
   get "/institutions", to: "institutions#index"
   resources :bolsistas, only: [:index, :create, :update, :destroy]
   resources :alertas, only: [:index, :create, :update, :destroy]
+  resources :categories, only: [:index]
 
   get "/auditoria/state", to: "auditoria#state"
   post "/auditoria/toggle", to: "auditoria#toggle"

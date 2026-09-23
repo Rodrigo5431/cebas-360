@@ -19,6 +19,7 @@ class DocumentsController < ApplicationController
 
     query = query.where(institution_id: params[:institution_id]) if params[:institution_id].present?
     query = query.where(cycle: params[:cycle]) if params[:cycle].present?
+    query = query.where(category_id: params[:category_id]) if params[:category_id].present?
 
     if params[:search].present?
       termo = "%#{params[:search]}%"
@@ -36,6 +37,7 @@ class DocumentsController < ApplicationController
         {
           id: doc.id,
           category_name: doc.category&.name,
+          category_id: doc.category_id,
           name: doc.name,
           orientation: doc.orientation,
           mandatory: doc.mandatory,
@@ -292,6 +294,7 @@ class DocumentsController < ApplicationController
 
     documents = documents.where(institution_id: params[:institution_id]) if params[:institution_id].present?
     documents = documents.where(cycle: params[:cycle]) if params[:cycle].present?
+    documents = documents.where(category_id: params[:category_id]) if params[:category_id].present?
 
     csv_data = CSV.generate(headers: true, col_sep: ',') do |csv|
       csv << ['Documento', 'Categoria', 'Versao', 'Validade', 'Status', 'Ciclo']
