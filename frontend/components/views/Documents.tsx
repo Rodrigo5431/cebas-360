@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Upload, Plus, ChevronLeft, ChevronRight, Search, FileText, CheckCircle2, AlertTriangle, AlertCircle, Download, Clock, User, Building, Tag } from 'lucide-react'
 import { request } from '@/lib/api'
 import { Card, Eyebrow, Button, ErrorBanner, Heading, Loading, Stat } from '@/components/ui'
@@ -8,6 +9,8 @@ import { cn } from '@/lib/cn'
 import type { ApiState } from '@/types'
 
 export default function Documents({ onToast }: { onToast: (message: string) => void }) {
+  const searchParams = useSearchParams()
+
   const [currentPage, setCurrentPage] = useState(1)
   const [search, setSearch] = useState('')
   const [shouldFetch, setShouldFetch] = useState(0)
@@ -30,6 +33,8 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
   const [categories, setCategories] = useState<any[]>([])
   const [selectedCategory, setSelectedCategory] = useState('')
 
+  const [selectedStatus, setSelectedStatus] = useState(searchParams.get('pending') === 'true' ? 'aguardando' : '')
+
   const [selectedCycle, setSelectedCycle] = useState('2026')
   const cycles = ['2024', '2025', '2026', '2027']
 
@@ -50,7 +55,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
 
   useEffect(() => { 
     setCurrentPage(1) 
-  }, [search, selectedInstitution, selectedCategory, selectedCycle])
+  }, [search, selectedInstitution, selectedCategory, selectedStatus, selectedCycle])
 
   useEffect(() => {
     if (view !== 'list') return
@@ -59,9 +64,12 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
     setState((prev) => ({ ...prev, isLoading: true, error: null }))
     
     const delay = search ? 400 : 0
+
+    const statusQuery = selectedStatus === 'aguardando' ? '' : selectedStatus
+    const pendingQuery = selectedStatus === 'aguardando' ? 'true' : ''
     
     const timer = setTimeout(() => {
-      request<any>(`/documents?page=${currentPage}&search=${encodeURIComponent(search)}&institution_id=${selectedInstitution}&category_id=${selectedCategory}&cycle=${selectedCycle}`)
+      request<any>(`/documents?page=${currentPage}&search=${encodeURIComponent(search)}&institution_id=${selectedInstitution}&category_id=${selectedCategory}&status=${statusQuery}&pending=${pendingQuery}&cycle=${selectedCycle}`)
         .then((data) => {
           if (active) setState({ data, isLoading: false, error: null })
         })
@@ -74,7 +82,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
       active = false
       clearTimeout(timer)
     }
-  }, [currentPage, search, selectedInstitution, selectedCategory, selectedCycle, view, shouldFetch]) 
+  }, [currentPage, search, selectedInstitution, selectedCategory, selectedStatus, selectedCycle, view, shouldFetch]) 
 
   const handleFilesSelected = (files: FileList | null) => {
     if (!files?.length) return
@@ -239,6 +247,19 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
                   <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#879087]">Categoria Associada</label>
                   <input disabled defaultValue={selectedDoc.category_name} className="w-full rounded border border-[#e8e1d6] p-3 text-sm bg-[#f4f2ea] text-[#647078]" />
                 </div>
+
+                <div className="md:col-span-2">
+                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#879087]">Instrução de Preenchimento</label>
+                  <textarea disabled value={selectedDoc.orientation || 'Nenhuma instrução cadastrada para este item.'} rows={2} className="w-full rounded border border-[#e8e1d6] p-3 text-sm bg-[#f4f2ea] text-[#647078] resize-none" />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#879087]">Obrigatoriedade</label>
+                  <div className={cn("w-full rounded border p-3 text-sm font-bold", selectedDoc.mandatory ? "border-[#d94444]/30 bg-[#fdf0f0] text-[#d94444]" : "border-[#e8e1d6] bg-[#f4f2ea] text-[#647078]")}>
+                    {selectedDoc.mandatory ? 'Obrigatório' : 'Opcional'}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[#879087]">Versão Atual</label>
@@ -312,39 +333,67 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
               </div>
             </form>
 
-            <div className="h-fit rounded-xl border border-[#e8e1d6] bg-[#fdfbf7] p-6">
-              <span className="mb-4 block text-[10px] font-bold uppercase tracking-widest text-[#879087]">
-                Trilha de Auditoria
-              </span>
-              
-              <div className="relative ml-2 space-y-6 border-l-2 border-[#e1d5bd] py-2 pl-5">
-                <div className="group relative">
-                  <div className="absolute -left-[27px] top-1 h-3 w-3 rounded-full border-2 border-white bg-[#c49a3c] transition-transform group-hover:scale-125" />
-                  <div className="-mt-1.5">
-                    <b className="text-[10px] uppercase tracking-widest text-[#c49a3c]">Agora</b>
-                    <h3 className="mt-0.5 text-xs font-bold text-[#34332f]">Aguardando Conferência</h3>
-                    <p className="mt-1 text-[11px] text-[#879087] flex items-center gap-1">
-                      <User size={10}/> {currentUser?.name || 'Advogado / Analista'}
-                    </p>
+            <div className="space-y-6">
+              {selectedDoc.versions?.length > 0 && (
+                <div className="rounded-xl border border-[#e8e1d6] bg-[#fdfbf7] p-6">
+                  <span className="mb-4 block text-[10px] font-bold uppercase tracking-widest text-[#879087]">
+                    Histórico de Versões
+                  </span>
+                  <div className="space-y-3">
+                    {selectedDoc.versions.map((v: any) => (
+                      <div key={v.version_number} className="flex items-center justify-between text-xs border-b border-[#e8e1d6] pb-2 last:border-0 last:pb-0">
+                        <div>
+                          <span className="font-mono font-bold text-[#34332f]">v.{v.version_number}</span>
+                          <span className="ml-2 text-[#879087]">enviado por {v.uploaded_by}</span>
+                          {v.reviewed_by && <span className="text-[#879087]"> · revisado por {v.reviewed_by}</span>}
+                        </div>
+                        <span className={cn('rounded px-2 py-0.5 text-[10px] font-bold uppercase whitespace-nowrap', 
+                          v.status === 'aprovado' ? 'bg-[#e7f3ee] text-[#4b8c78]' : 
+                          v.status === 'correcao_solicitada' ? 'bg-[#fdf0f0] text-[#d94444]' : 
+                          'bg-[#fffaf0] text-[#c49a3c]'
+                        )}>
+                          {v.status?.replace('_', ' ')}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
+              )}
 
-                <div className="group relative">
-                  <div className="absolute -left-[27px] top-1 h-3 w-3 rounded-full border-2 border-white bg-[#4b8c78] transition-transform group-hover:scale-125" />
-                  <div className="-mt-1.5">
-                    <b className="text-[10px] uppercase tracking-widest text-[#4b8c78]">
-                      {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
-                    </b>
-                    <h3 className="mt-0.5 text-xs font-bold text-[#34332f]">Upload da v.{selectedDoc.versions?.length || 1}</h3>
-                    <p className="mt-1 text-[11px] text-[#879087] flex items-center gap-1">
-                      <Clock size={10}/> Via Plataforma (Instituição)
-                    </p>
+              <div className="h-fit rounded-xl border border-[#e8e1d6] bg-[#fdfbf7] p-6">
+                <span className="mb-4 block text-[10px] font-bold uppercase tracking-widest text-[#879087]">
+                  Trilha de Auditoria
+                </span>
+                
+                <div className="relative ml-2 space-y-6 border-l-2 border-[#e1d5bd] py-2 pl-5">
+                  <div className="group relative">
+                    <div className="absolute -left-[27px] top-1 h-3 w-3 rounded-full border-2 border-white bg-[#c49a3c] transition-transform group-hover:scale-125" />
+                    <div className="-mt-1.5">
+                      <b className="text-[10px] uppercase tracking-widest text-[#c49a3c]">Agora</b>
+                      <h3 className="mt-0.5 text-xs font-bold text-[#34332f]">Aguardando Conferência</h3>
+                      <p className="mt-1 text-[11px] text-[#879087] flex items-center gap-1">
+                        <User size={10}/> {currentUser?.name || 'Advogado / Analista'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="group relative">
+                    <div className="absolute -left-[27px] top-1 h-3 w-3 rounded-full border-2 border-white bg-[#4b8c78] transition-transform group-hover:scale-125" />
+                    <div className="-mt-1.5">
+                      <b className="text-[10px] uppercase tracking-widest text-[#4b8c78]">
+                        {new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
+                      </b>
+                      <h3 className="mt-0.5 text-xs font-bold text-[#34332f]">Upload da v.{selectedDoc.versions?.length || 1}</h3>
+                      <p className="mt-1 text-[11px] text-[#879087] flex items-center gap-1">
+                        <Clock size={10}/> Via Plataforma (Instituição)
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="mt-6 p-3 bg-[#fffaf0] rounded text-[10px] text-[#8a6317] border border-[#f0e6d2]">
-                <strong>Compliance:</strong> As versões anteriores deste documento permanecem inalteráveis garantindo o histórico do Data Room.
+                
+                <div className="mt-6 p-3 bg-[#fffaf0] rounded text-[10px] text-[#8a6317] border border-[#f0e6d2]">
+                  <strong>Compliance:</strong> As versões anteriores deste documento permanecem inalteráveis garantindo o histórico do Data Room.
+                </div>
               </div>
             </div>
           </div>
@@ -488,6 +537,23 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
             )}
 
             <div className="flex items-center border border-[#d1c4ae] bg-[#f4f5fb] px-3 rounded focus-within:border-[#4b8c78] transition-colors">
+              <AlertCircle size={15} className="text-[#a38e7a]" />
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="bg-transparent p-2 text-xs outline-none text-[#34332f] cursor-pointer"
+              >
+                <option value="">Todos os status</option>
+                <option value="aguardando">Aguardando conferência</option>
+                <option value="pendente">Pendente</option>
+                <option value="em_revisao">Em Revisão</option>
+                <option value="aprovado">Aprovado</option>
+                <option value="correcao_solicitada">Correção Solicitada</option>
+                <option value="nao_aplicavel">Não Aplicável</option>
+              </select>
+            </div>
+
+            <div className="flex items-center border border-[#d1c4ae] bg-[#f4f5fb] px-3 rounded focus-within:border-[#4b8c78] transition-colors">
               <Clock size={15} className="text-[#a38e7a]" />
               <select
                 value={selectedCycle}
@@ -530,6 +596,9 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
                         <div className="flex items-center gap-3">
                           <FileText size={16} className="text-[#a38e7a]" />
                           <span className="font-bold text-[#34332f] max-w-[200px] truncate" title={doc.name}>{doc.name}</span>
+                          {doc.mandatory && (
+                            <span className="text-[9px] font-bold uppercase text-[#d94444] bg-[#fdf0f0] border border-[#f5c2c2] px-1.5 py-0.5 rounded">Obrigatório</span>
+                          )}
                         </div>
                         
                         {(doc.name.toLowerCase().includes('declaração') || doc.name.toLowerCase().includes('relatório')) && (
