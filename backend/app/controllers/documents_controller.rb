@@ -15,11 +15,13 @@ class DocumentsController < ApplicationController
     page = (params[:page] || 1).to_i
     per_page = 10
 
-    query = DocumentItem.includes(:category, :document_versions, document_comments: :user).joins(:category)
+    query = DocumentItem.includes(:category, :document_versions, document_comments: :user).references(:categories)
 
     query = query.where(institution_id: params[:institution_id]) if params[:institution_id].present?
     query = query.where(cycle: params[:cycle]) if params[:cycle].present?
     query = query.where(category_id: params[:category_id]) if params[:category_id].present?
+    query = query.where(status: params[:status]) if params[:status].present?
+    query = query.where(status: [:pendente, :em_revisao, :correcao_solicitada]) if params[:pending] == 'true'
 
     if params[:search].present?
       termo = "%#{params[:search]}%"
@@ -290,11 +292,13 @@ class DocumentsController < ApplicationController
 
   def export
     require 'csv'
-    documents = DocumentItem.includes(:category, :document_versions).order('categories.name ASC')
+    documents = DocumentItem.includes(:category, :document_versions).references(:categories).order('categories.name ASC')
 
     documents = documents.where(institution_id: params[:institution_id]) if params[:institution_id].present?
     documents = documents.where(cycle: params[:cycle]) if params[:cycle].present?
     documents = documents.where(category_id: params[:category_id]) if params[:category_id].present?
+    documents = documents.where(status: params[:status]) if params[:status].present?
+    documents = documents.where(status: [:pendente, :em_revisao, :correcao_solicitada]) if params[:pending] == 'true'
 
     csv_data = CSV.generate(headers: true, col_sep: ',') do |csv|
       csv << ['Documento', 'Categoria', 'Versao', 'Validade', 'Status', 'Ciclo']

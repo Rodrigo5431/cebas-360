@@ -103,7 +103,7 @@ alertas_data.each do |alerta|
   Alerta.create!(alerta) rescue nil
 end
 
-puts "==> 📄 Criando Documentos do Checklist CEBAS (mínimo 6 por categoria)..."
+puts "==> 📄 Criando Documentos do Checklist CEBAS em Vários Ciclos e Instituições..."
 
 status_cycle = [:aprovado, :em_revisao, :pendente, :correcao_solicitada, :nao_aplicavel, :aprovado, :em_revisao, :pendente]
 
@@ -124,150 +124,121 @@ motivos_correcao = [
 
 checklist_por_categoria = {
   cat_mantenedora => [
-    "Estatuto Social Consolidado",
-    "Ata de Eleição da Atual Diretoria",
-    "Cartão CNPJ (Matriz e Filiais)",
-    "Declaração de Cumprimento dos Requisitos CEBAS",
-    "Regimento Interno Atualizado",
-    "Certidão de Regularidade no Conselho Municipal"
+    "Estatuto Social Consolidado", "Ata de Eleição da Atual Diretoria", "Cartão CNPJ (Matriz e Filiais)",
+    "Declaração de Cumprimento dos Requisitos CEBAS", "Regimento Interno Atualizado", "Certidão de Regularidade no Conselho Municipal"
   ],
   cat_mantidas => [
-    "Ato de Credenciamento da Mantida",
-    "Declaração de Perfil Socioeconômico",
-    "Relação Nominal de Bolsistas",
-    "Termo de Concessão de Bolsas",
-    "Editais de Seleção de Bolsistas",
-    "Plano Pedagógico Institucional"
+    "Ato de Credenciamento da Mantida", "Declaração de Perfil Socioeconômico", "Relação Nominal de Bolsistas",
+    "Termo de Concessão de Bolsas", "Editais de Seleção de Bolsistas", "Plano Pedagógico Institucional"
   ],
   cat_contabil => [
-    "Demonstrações Contábeis Consolidadas",
-    "Parecer de Auditoria Independente",
-    "Notas Explicativas às Demonstrações",
-    "Balancete Mensal Consolidado",
-    "Relatório de Execução Financeira",
-    "Extrato Bancário Consolidado"
+    "Demonstrações Contábeis Consolidadas", "Parecer de Auditoria Independente", "Notas Explicativas às Demonstrações",
+    "Balancete Mensal Consolidado", "Relatório de Execução Financeira", "Extrato Bancário Consolidado"
   ],
   cat_trabalhista => [
-    "Folha de Pagamento Consolidada",
-    "Guias de Recolhimento do FGTS",
-    "Certidão Negativa de Débitos Trabalhistas",
-    "Relação de Empregados (RAIS)",
-    "Comprovante de Recolhimento do INSS",
-    "Acordo Coletivo de Trabalho Vigente"
+    "Folha de Pagamento Consolidada", "Guias de Recolhimento do FGTS", "Certidão Negativa de Débitos Trabalhistas",
+    "Relação de Empregados (RAIS)", "Comprovante de Recolhimento do INSS", "Acordo Coletivo de Trabalho Vigente"
   ],
   cat_tributario => [
-    "CND Federal (Receita/PGFN)",
-    "Certidão de Regularidade do FGTS",
-    "Comprovantes de Recolhimento de Tributos",
-    "Declaração de Isenção Tributária",
-    "Certidão Negativa Municipal",
-    "Certidão Negativa Estadual"
+    "CND Federal (Receita/PGFN)", "Certidão de Regularidade do FGTS", "Comprovantes de Recolhimento de Tributos",
+    "Declaração de Isenção Tributária", "Certidão Negativa Municipal", "Certidão Negativa Estadual"
   ],
   cat_infra => [
-    "Laudo de Vistoria do Corpo de Bombeiros",
-    "Alvará de Funcionamento",
-    "Laudo de Acessibilidade",
-    "Plano de Manutenção Predial",
-    "Certificado de Vigilância Sanitária",
-    "Apólice de Seguro Predial"
+    "Laudo de Vistoria do Corpo de Bombeiros", "Alvará de Funcionamento", "Laudo de Acessibilidade",
+    "Plano de Manutenção Predial", "Certificado de Vigilância Sanitária", "Apólice de Seguro Predial"
   ],
   cat_docente => [
-    "Relação de Professores Habilitados",
-    "Comprovantes de Titulação Docente",
-    "Plano de Capacitação Continuada",
-    "Contratos de Trabalho Docente",
-    "Registro Funcional dos Professores",
-    "Certificados de Formação Continuada"
+    "Relação de Professores Habilitados", "Comprovantes de Titulação Docente", "Plano de Capacitação Continuada",
+    "Contratos de Trabalho Docente", "Registro Funcional dos Professores", "Certificados de Formação Continuada"
   ],
   cat_social => [
-    "Relatório de Atividades Extracurriculares",
-    "Plano de Ação Social Anual",
-    "Parcerias com Entidades Comunitárias",
-    "Registro de Beneficiários de Projetos",
-    "Prestação de Contas de Projetos Sociais",
-    "Relatório de Impacto Social"
+    "Relatório de Atividades Extracurriculares", "Plano de Ação Social Anual", "Parcerias com Entidades Comunitárias",
+    "Registro de Beneficiários de Projetos", "Prestação de Contas de Projetos Sociais", "Relatório de Impacto Social"
   ],
   cat_bolsistas => [
-    "Termo de Concessão de Bolsa Integral",
-    "Termo de Concessão de Bolsa Parcial",
-    "Relação de Benefícios Concedidos",
-    "Comprovantes de Renda dos Bolsistas",
-    "Relatório de Acompanhamento Socioeconômico",
-    "Declaração de Matrícula dos Bolsistas"
+    "Termo de Concessão de Bolsa Integral", "Termo de Concessão de Bolsa Parcial", "Relação de Benefícios Concedidos",
+    "Comprovantes de Renda dos Bolsistas", "Relatório de Acompanhamento Socioeconômico", "Declaração de Matrícula dos Bolsistas"
   ],
   cat_auditoria => [
-    "Relatório de Auditoria Externa Anual",
-    "Plano de Ação Corretiva",
-    "Parecer sobre Controles Internos",
-    "Carta de Recomendações da Auditoria",
-    "Certificado de Conformidade",
-    "Relatório de Follow-up da Auditoria Anterior"
+    "Relatório de Auditoria Externa Anual", "Plano de Ação Corretiva", "Parecer sobre Controles Internos",
+    "Carta de Recomendações da Auditoria", "Certificado de Conformidade", "Relatório de Follow-up da Auditoria Anterior"
   ]
 }
 
 total_criados = 0
+ciclos_disponiveis = ["2024", "2025", "2026", "2027"]
 
 checklist_por_categoria.each do |categoria, nomes|
   nomes.each_with_index do |nome, idx|
-    status = status_cycle[idx % status_cycle.length]
-    entidade = [instituicao, instituicao, instituicao, instituicao_secundaria, instituicao_terciaria].sample
+    ciclos_disponiveis.each do |ciclo_atual|
+      
+      # Distribui os documentos por TODAS as instituições da base aleatoriamente
+      entidade = instituicoes.sample
 
-    item = entidade.document_items.create!(
-      category: categoria,
-      name: nome,
-      orientation: "Documento obrigatório conforme checklist regulatório do CEBAS.",
-      mandatory: status != :nao_aplicavel,
-      due_date: Date.current + rand(5..90).days,
-      status: status,
-      cycle: "2026",
-      position: idx + 1
-    )
+      # Se for 2024 ou 2027 forçamos a ficar vazio/pendente (sem documentos enviados)
+      if ciclo_atual == "2024" || ciclo_atual == "2027"
+        status = :pendente
+      else
+        status = status_cycle[idx % status_cycle.length]
+      end
 
-    total_criados += 1
-    next if status == :pendente
-
-    correction_reason = status == :correcao_solicitada ? motivos_correcao.sample : nil
-
-    versao = begin
-      item.document_versions.create!(
-        version_number: 1,
+      item = entidade.document_items.create!(
+        category: categoria,
+        name: nome,
+        orientation: "Documento obrigatório conforme checklist regulatório do CEBAS.",
+        mandatory: status != :nao_aplicavel,
+        due_date: Date.current + rand(5..90).days,
         status: status,
-        correction_reason: correction_reason,
-        uploaded_by: cliente,
-        reviewed_by: advogado,
-        reviewed_at: rand(1..30).days.ago
+        cycle: ciclo_atual,
+        position: idx + 1
       )
-    rescue
-      next
-    end
 
-    audit_action = case status
-                   when :aprovado then "approval"
-                   when :correcao_solicitada then "correction_request"
-                   else "status_change"
-                   end
+      total_criados += 1
+      next if status == :pendente # O "next" garante que ciclos vazios não recebam Versões/Arquivos
 
-    begin
-      item.audit_logs.create!(
-        document_version: versao,
-        user: advogado,
-        action: audit_action,
-        from_status: "em_revisao",
-        to_status: status,
-        comment: correction_reason || "Documento avaliado pela equipe de compliance."
-      )
-    rescue
-      nil
-    end
+      correction_reason = status == :correcao_solicitada ? motivos_correcao.sample : nil
 
-    if [:aprovado, :correcao_solicitada].include?(status) && rand < 0.6
+      versao = begin
+        item.document_versions.create!(
+          version_number: 1,
+          status: status,
+          correction_reason: correction_reason,
+          uploaded_by: cliente,
+          reviewed_by: advogado,
+          reviewed_at: rand(1..30).days.ago
+        )
+      rescue
+        next
+      end
+
+      audit_action = case status
+                     when :aprovado then "approval"
+                     when :correcao_solicitada then "correction_request"
+                     else "status_change"
+                     end
+
       begin
-        item.document_comments.create!(
-          user: [advogado, cliente].sample,
-          body: correction_reason || comentarios_possiveis.sample
+        item.audit_logs.create!(
+          document_version: versao,
+          user: advogado,
+          action: audit_action,
+          from_status: "em_revisao",
+          to_status: status,
+          comment: correction_reason || "Documento avaliado pela equipe de compliance."
         )
       rescue
         nil
+      end
+
+      if [:aprovado, :correcao_solicitada].include?(status) && rand < 0.6
+        begin
+          item.document_comments.create!(
+            user: [advogado, cliente].sample,
+            body: correction_reason || comentarios_possiveis.sample
+          )
+        rescue
+          nil
+        end
       end
     end
   end
@@ -275,58 +246,85 @@ end
 
 puts "    -> #{total_criados} documentos de checklist criados em #{checklist_por_categoria.size} categorias."
 
-puts "==> 🌪️ Criando 72 Documentos de Fechamento Mensal (Histórico de 2 Anos)..."
+puts "==> 🌪️ Criando Documentos de Fechamento Mensal (Distribuído entre Instituições e Ciclos)..."
 meses = %w[Janeiro Fevereiro Março Abril Maio Junho Julho Agosto Setembro Outubro Novembro Dezembro]
-anos = [2025, 2026]
+anos = [2024, 2025, 2026, 2027]
 
 anos.each do |ano|
   meses.each_with_index do |mes, idx|
-    vencimento_base = Date.new(ano, idx + 1, 15)
+    
+    # Previne erro em meses inválidos dependendo do ano (ex: Fevereiro 29)
+    vencimento_base = begin
+      Date.new(ano, idx + 1, 15)
+    rescue
+      Date.new(ano, idx + 1, 1)
+    end
 
-    # Contábil
-    instituicao.document_items.create!(
-      category: cat_contabil, name: "Extrato Bancário Consolidado - #{mes}/#{ano}",
-      orientation: "Demonstrativo completo.", mandatory: true, due_date: vencimento_base + 10.days,
-      status: ano == 2025 ? :aprovado : :pendente, cycle: ano.to_s, position: idx + 1
-    )
+    # Criando para TODAS as instituições em vez de só uma
+    instituicoes.each do |inst|
+      
+      # Força 2024 e 2027 a ficarem zerados/pendentes
+      status_contabil = ano == 2025 ? :aprovado : :pendente
+      status_contabil = :pendente if [2024, 2027].include?(ano)
 
-    # Trabalhista
-    instituicao.document_items.create!(
-      category: cat_trabalhista, name: "Folha de Pagamento - #{mes}/#{ano}",
-      orientation: "Relatório de salários.", mandatory: true, due_date: vencimento_base + 15.days,
-      status: (ano == 2025 || idx < 6) ? :aprovado : :pendente, cycle: ano.to_s, position: idx + 1
-    )
+      inst.document_items.create!(
+        category: cat_contabil, name: "Extrato Bancário Consolidado - #{mes}/#{ano}",
+        orientation: "Demonstrativo completo.", mandatory: true, due_date: vencimento_base + 10.days,
+        status: status_contabil, cycle: ano.to_s, position: idx + 1
+      )
 
-    # Fiscal
-    doc_fiscal = instituicao.document_items.create!(
-      category: cat_tributario, name: "Comprovantes INSS/FGTS - #{mes}/#{ano}",
-      orientation: "Guias quitadas.", mandatory: true, due_date: vencimento_base + 20.days,
-      status: (ano == 2026 && idx == 5) ? :correcao_solicitada : ((ano == 2025 || idx < 5) ? :aprovado : :pendente),
-      cycle: ano.to_s, position: idx + 1
-    )
+      # Trabalhista
+      status_trab = (ano == 2025 || (ano == 2026 && idx < 6)) ? :aprovado : :pendente
+      status_trab = :pendente if [2024, 2027].include?(ano)
 
-    if ano == 2026 && idx == 5
-      (1..4).each do |num|
-        status_v = num.even? ? :correcao_solicitada : :em_revisao
-        motivo = num.even? ? "Ilegível na versão #{num}." : nil
+      inst.document_items.create!(
+        category: cat_trabalhista, name: "Folha de Pagamento - #{mes}/#{ano}",
+        orientation: "Relatório de salários.", mandatory: true, due_date: vencimento_base + 15.days,
+        status: status_trab, cycle: ano.to_s, position: idx + 1
+      )
 
-        v = begin
-          doc_fiscal.document_versions.create!(version_number: num, status: status_v, correction_reason: motivo, uploaded_by: cliente, reviewed_by: advogado)
-        rescue
-          doc_fiscal.document_versions.create!(version_number: num, status: status_v, correction_reason: motivo)
-        end
+      # Fiscal
+      status_fiscal = if [2024, 2027].include?(ano)
+                        :pendente
+                      elsif ano == 2026 && idx == 5
+                        :correcao_solicitada
+                      elsif ano == 2025 || (ano == 2026 && idx < 5)
+                        :aprovado
+                      else
+                        :pendente
+                      end
 
-        begin
-          doc_fiscal.audit_logs.create!(
-            document_version: v,
-            user: advogado,
-            action: status_v == :correcao_solicitada ? "correction_request" : "status_change",
-            from_status: "pendente",
-            to_status: status_v.to_s,
-            comment: motivo || "Ciclo de revisão #{num}."
-          )
-        rescue
-          nil
+      doc_fiscal = inst.document_items.create!(
+        category: cat_tributario, name: "Comprovantes INSS/FGTS - #{mes}/#{ano}",
+        orientation: "Guias quitadas.", mandatory: true, due_date: vencimento_base + 20.days,
+        status: status_fiscal,
+        cycle: ano.to_s, position: idx + 1
+      )
+
+      # Histórico aprofundado de versões para o mes 6 de 2026 (mantido igual)
+      if ano == 2026 && idx == 5
+        (1..4).each do |num|
+          status_v = num.even? ? :correcao_solicitada : :em_revisao
+          motivo = num.even? ? "Ilegível na versão #{num}." : nil
+
+          v = begin
+            doc_fiscal.document_versions.create!(version_number: num, status: status_v, correction_reason: motivo, uploaded_by: cliente, reviewed_by: advogado)
+          rescue
+            doc_fiscal.document_versions.create!(version_number: num, status: status_v, correction_reason: motivo)
+          end
+
+          begin
+            doc_fiscal.audit_logs.create!(
+              document_version: v,
+              user: advogado,
+              action: status_v == :correcao_solicitada ? "correction_request" : "status_change",
+              from_status: "pendente",
+              to_status: status_v.to_s,
+              comment: motivo || "Ciclo de revisão #{num}."
+            )
+          rescue
+            nil
+          end
         end
       end
     end
