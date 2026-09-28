@@ -5,10 +5,41 @@ class DocumentsController < ApplicationController
   skip_before_action :require_login, only: [:upload, :create], raise: false
 
   CATEGORY_SLUG_MAP = {
-    'estatuto'  => 'Mantenedora',
-    'balanco'   => 'Contábil & Financeiro',
-    'relatorio' => 'Mantenedora',
-    'cnd'       => 'Fiscal & Tributário'
+    'dec_cumprimento'   => 'Mantenedora',
+    'ata_eleicao'       => 'Mantenedora',
+    'estatuto'          => 'Mantenedora',
+    'cartao_cnpj'       => 'Fiscal & Tributário',
+    'relatorio'         => 'Mantenedora',
+    'inep'              => 'Mantenedora',
+    'cnd'               => 'Fiscal & Tributário',
+    'fgts'              => 'Fiscal & Tributário',
+    'balanco'           => 'Contábil & Financeiro',
+    'autorizacao'       => 'Mantenedora',
+    'perfil'            => 'Bolsas',
+    'corpo_dirigente'   => 'Mantenedora',
+    'relacao_bolsistas' => 'Bolsas',
+    'termo_bolsas'      => 'Bolsas',
+    'regimento'         => 'Mantenedora',
+    'comprobatorios'    => 'Bolsas'
+  }.freeze
+
+  CHECKLIST_NAME_MAP = {
+    'dec_cumprimento'   => '01. Declaração de cumprimento - Decreto 11.791-2023',
+    'ata_eleicao'       => '02. Ata de Eleição da atual diretoria',
+    'estatuto'          => '03. Estatuto Social',
+    'cartao_cnpj'       => '04. Cartão CNPJ da matriz e todas as filiais',
+    'relatorio'         => '05. Relatório de execução anual',
+    'inep'              => '06. Declaração INEP',
+    'cnd'               => '07. CND RFB PGFN',
+    'fgts'              => '08. Comprovação de regularidade do FGTS',
+    'balanco'           => '09. Demonstrações Contábeis e Parecer Independente',
+    'autorizacao'       => '10. Autorização de funcionamento vigente das mantidas',
+    'perfil'            => '11. Declaração do atendimento ao perfil socioeconômico',
+    'corpo_dirigente'   => '12. Corpo dirigente das mantidas e currículo',
+    'relacao_bolsistas' => '13. Relação nominal de bolsistas',
+    'termo_bolsas'      => '13.1. Termo de concessão de bolsas de estudos',
+    'regimento'         => '14. Regimento interno',
+    'comprobatorios'    => '15. Documentos comprobatórios do processo seletivo'
   }.freeze
 
   def index
@@ -123,9 +154,11 @@ class DocumentsController < ApplicationController
     category = resolve_category(category_slug)
 
     begin
+      doc_name = params[:checklist_item_name] || CHECKLIST_NAME_MAP[category_slug.to_s.downcase] || file.original_filename
+
       document_item = DocumentItem.find_or_create_by(
         category: category,
-        name: file.original_filename,
+        name: doc_name,
         institution_id: institution&.id,
         cycle: cycle
       ) do |doc|
@@ -141,7 +174,7 @@ class DocumentsController < ApplicationController
 
       drive_data = nil
       begin
-        drive_data = GoogleDriveService.new.upload_file(file, institution: institution, category: category)
+        drive_data = GoogleDriveService.new.upload_file(file, institution: institution, folder_name: document_item.name)
       rescue => e
         Rails.logger.error "[GoogleDrive] Falha ou Cota Excedida: #{e.message}"
       end
