@@ -26,10 +26,10 @@ class GoogleDriveService
     end
   end
 
-  def upload_file(uploaded_file, custom_name: nil, institution: nil, category: nil)
+  def upload_file(uploaded_file, custom_name: nil, institution: nil, folder_name: nil)
     return nil unless @drive_service.authorization
 
-    parent_id = resolve_folder_path(institution, category)
+    parent_id = resolve_folder_path(institution, folder_name)
 
     file_metadata = {
       name: custom_name || uploaded_file.original_filename,
@@ -51,13 +51,13 @@ class GoogleDriveService
 
   private
 
-  def resolve_folder_path(institution, category)
+  def resolve_folder_path(institution, folder_name)
     parent = ROOT_FOLDER_ID
     if institution.present?
       name = institution.cnpj.present? ? "#{institution.name} - #{institution.cnpj}" : institution.name
       parent = find_or_create_folder(name, parent)
     end
-    parent = find_or_create_folder(category.name, parent) if category.present?
+    parent = find_or_create_folder(folder_name, parent) if folder_name.present?
     parent
   end
 

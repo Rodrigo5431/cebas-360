@@ -91,10 +91,22 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
       const name = file.name.toLowerCase()
       let suggestedCategory = ""
       
-      if (name.includes('estatuto') || name.includes('ata')) suggestedCategory = 'estatuto'
-      else if (name.includes('balanço') || name.includes('balanco') || name.includes('contábil') || name.includes('dre')) suggestedCategory = 'balanco'
-      else if (name.includes('relatório') || name.includes('relatorio') || name.includes('plano')) suggestedCategory = 'relatorio'
-      else if (name.includes('cnd') || name.includes('fgts') || name.includes('certidão') || name.includes('federal')) suggestedCategory = 'cnd'
+      if (name.includes('estatuto')) suggestedCategory = 'estatuto'
+      else if (name.includes('ata') || name.includes('eleição') || name.includes('diretoria')) suggestedCategory = 'ata_eleicao'
+      else if (name.includes('balanço') || name.includes('dre') || name.includes('contábil') || name.includes('parecer')) suggestedCategory = 'balanco'
+      else if (name.includes('relatório') || name.includes('execução')) suggestedCategory = 'relatorio'
+      else if (name.includes('cnd') || name.includes('receita') || name.includes('federal') || name.includes('pgfn')) suggestedCategory = 'cnd'
+      else if (name.includes('fgts') || name.includes('regularidade')) suggestedCategory = 'fgts'
+      else if (name.includes('cnpj') || name.includes('cartão')) suggestedCategory = 'cartao_cnpj'
+      else if (name.includes('inep')) suggestedCategory = 'inep'
+      else if (name.includes('bolsista') || name.includes('relação nominal')) suggestedCategory = 'relacao_bolsistas'
+      else if (name.includes('termo') || name.includes('concessão')) suggestedCategory = 'termo_bolsas'
+      else if (name.includes('regimento')) suggestedCategory = 'regimento'
+      else if (name.includes('dirigente') || name.includes('currículo')) suggestedCategory = 'corpo_dirigente'
+      else if (name.includes('cumprimento') || name.includes('decreto')) suggestedCategory = 'dec_cumprimento'
+      else if (name.includes('autorização') || name.includes('funcionamento')) suggestedCategory = 'autorizacao'
+      else if (name.includes('perfil') || name.includes('socioeconômico')) suggestedCategory = 'perfil'
+      else if (name.includes('comprobatórios') || name.includes('seletivo')) suggestedCategory = 'comprobatorios'
       
       return { file, category: suggestedCategory }
     })
@@ -113,11 +125,34 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
     e.preventDefault()
     setView('list') 
     
+    const categoryToNameMap: Record<string, string> = {
+      'dec_cumprimento': '01. Declaração de cumprimento - Decreto 11.791-2023',
+      'ata_eleicao': '02. Ata de Eleição da atual diretoria',
+      'estatuto': '03. Estatuto Social',
+      'cartao_cnpj': '04. Cartão CNPJ da matriz e todas as filiais',
+      'relatorio': '05. Relatório de execução anual',
+      'inep': '06. Declaração INEP',
+      'cnd': '07. CND RFB PGFN',
+      'fgts': '08. Comprovação de regularidade do FGTS',
+      'balanco': '09. Demonstrações Contábeis e Parecer Independente',
+      'autorizacao': '10. Autorização de funcionamento vigente das mantidas',
+      'perfil': '11. Declaração do atendimento ao perfil socioeconômico',
+      'corpo_dirigente': '12. Corpo dirigente das mantidas e currículo',
+      'relacao_bolsistas': '13. Relação nominal de bolsistas',
+      'termo_bolsas': '13.1. Termo de concessão de bolsas de estudos',
+      'regimento': '14. Regimento interno',
+      'comprobatorios': '15. Documentos comprobatórios do processo seletivo'
+    }
+
     try {
       for (const item of uploadQueue) {
         const formData = new FormData()
         formData.append('file', item.file)
         formData.append('category', item.category)
+        
+        const officialName = categoryToNameMap[item.category] || item.file.name
+        formData.append('checklist_item_name', officialName)
+
         if (currentUser?.name) formData.append('user_name', currentUser.name)
         if (selectedInstitution) formData.append('institution_id', selectedInstitution)
         formData.append('cycle', selectedCycle)
@@ -133,7 +168,7 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
         }
       }
 
-      onToast(`${uploadQueue.length} ficheiro(s) enviado(s) com sucesso para o Drive!`)
+      onToast(`${uploadQueue.length} ficheiro(s) adicionado(s) com sucesso na fila do processo!`)
       setUploadQueue([])
       setShouldFetch(p => p + 1)
     } catch (err: any) {
@@ -436,17 +471,29 @@ export default function Documents({ onToast }: { onToast: (message: string) => v
                     className={cn("w-full rounded border p-2.5 text-sm outline-none bg-white font-bold transition-colors", item.category !== '' ? 'border-[#4b8c78] text-[#4b8c78]' : 'border-[#c49a3c] text-[#34332f]')}
                   >
                     <option value="">Selecione a categoria do checklist...</option>
-                    <option value="estatuto">Estatuto Social Consolidado</option>
-                    <option value="balanco">Demonstrações Contábeis e Notas Explicativas</option>
-                    <option value="relatorio">Relatório de Execução Anual (Art. 6º)</option>
-                    <option value="cnd">Certidões de Regularidade (CND/FGTS)</option>
+                    <option value="dec_cumprimento">01. Declaração de cumprimento - Decreto 11.791-2023</option>
+                    <option value="ata_eleicao">02. Ata de Eleição da atual diretoria</option>
+                    <option value="estatuto">03. Estatuto Social</option>
+                    <option value="cartao_cnpj">04. Cartão CNPJ da matriz e todas as filiais</option>
+                    <option value="relatorio">05. Relatório de execução anual</option>
+                    <option value="inep">06. Declaração INEP</option>
+                    <option value="cnd">07. CND RFB PGFN</option>
+                    <option value="fgts">08. Comprovação de regularidade do FGTS</option>
+                    <option value="balanco">09. Demonstrações Contábeis e Parecer Independente</option>
+                    <option value="autorizacao">10. Autorização de funcionamento vigente das mantidas</option>
+                    <option value="perfil">11. Declaração do atendimento ao perfil socioeconômico</option>
+                    <option value="corpo_dirigente">12. Corpo dirigente das mantidas e currículo</option>
+                    <option value="relacao_bolsistas">13. Relação nominal de bolsistas</option>
+                    <option value="termo_bolsas">13.1. Termo de concessão de bolsas de estudos</option>
+                    <option value="regimento">14. Regimento interno</option>
+                    <option value="comprobatorios">15. Documentos comprobatórios do processo seletivo</option>
                   </select>
                   {item.category !== '' && <p className="text-[9px] text-[#4b8c78] mt-1 flex items-center gap-1"><CheckCircle2 size={10}/> Sugerido automaticamente</p>}
                 </div>
               </div>
             ))}
             <div className="mt-6 flex justify-end gap-3 border-t border-[#e8e1d6] pt-6">
-              <Button outline onClick={() => { setView('list'); setUploadQueue([]); }}>Cancelar</Button>
+              <Button outline onClick={() => { setView('list'); setUploadQueue([]); }} type="button">Cancelar</Button>
               <Button type="submit">Gravar e Associar Ficheiros</Button>
             </div>
           </form>
