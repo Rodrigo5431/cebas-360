@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_20_141957) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_07_174550) do
   create_schema "extensions"
 
   # These are extensions that must be enabled in order to support this database
@@ -127,6 +127,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_20_141957) do
     t.bigint "document_item_id", null: false
     t.string "drive_id"
     t.string "drive_url"
+    t.string "original_filename"
     t.datetime "reviewed_at"
     t.bigint "reviewed_by_id"
     t.integer "status", default: 0, null: false
