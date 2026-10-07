@@ -46,7 +46,8 @@ class DocumentsController < ApplicationController
     page = (params[:page] || 1).to_i
     per_page = 10
 
-    query = DocumentItem.includes(:category, :document_versions, document_comments: :user).references(:categories)
+    # Adicionamos left_joins para document_versions de forma segura
+    query = DocumentItem.includes(:category, :document_versions, document_comments: :user).left_joins(:category)
 
     query = query.where(institution_id: params[:institution_id]) if params[:institution_id].present?
     query = query.where(cycle: params[:cycle]) if params[:cycle].present?
@@ -56,8 +57,15 @@ class DocumentsController < ApplicationController
 
     if params[:search].present?
       termo = "%#{params[:search]}%"
-      query = query.left_joins(:document_versions)
-                   .where("document_items.name ILIKE :q OR categories.name ILIKE :q OR document_versions.original_filename ILIKE :q", q: termo)
+      
+      # Uma busca mais robusta garantindo que não há problemas de repetição com DISTINCT
+      query = query.where(
+        "document_items.name ILIKE :q OR categories.name ILIKE :q OR EXISTS (
+          SELECT 1 FROM document_versions 
+          WHERE document_versions.document_item_id = document_items.id 
+          AND document_versions.original_filename ILIKE :q
+        )", q: termo
+      )
     end
 
     total_items = query.distinct.count(:id)
@@ -95,7 +103,8 @@ class DocumentsController < ApplicationController
               status: v.status,
               uploaded_by: v.uploaded_by&.name || "Sistema",
               reviewed_by: v.reviewed_by&.name,
-              drive_url: v.respond_to?(:drive_url) ? v.drive_url : nil
+              drive_url: v.respond_to?(:drive_url) ? v.drive_url : nil,
+              original_filename: v.respond_to?(:original_filename) ? v.original_filename : nil
             }
           end
         }
