@@ -56,7 +56,8 @@ class DocumentsController < ApplicationController
 
     if params[:search].present?
       termo = "%#{params[:search]}%"
-      query = query.where("document_items.name ILIKE :q OR categories.name ILIKE :q", q: termo)
+      query = query.left_joins(:document_versions)
+                   .where("document_items.name ILIKE :q OR categories.name ILIKE :q OR document_versions.original_filename ILIKE :q", q: termo)
     end
 
     total_items = query.distinct.count(:id)
@@ -205,6 +206,10 @@ class DocumentsController < ApplicationController
         version_params[:drive_url] = drive_data[:web_link] if DocumentVersion.column_names.include?('drive_url')
       elsif local_url
         version_params[:drive_url] = local_url if DocumentVersion.column_names.include?('drive_url')
+      end
+
+      if DocumentVersion.column_names.include?('original_filename')
+        version_params[:original_filename] = file.original_filename
       end
 
       new_version = document_item.document_versions.create!(version_params)
